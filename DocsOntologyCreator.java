@@ -1019,7 +1019,7 @@ public class DocsOntologyCreator {
 //		}
 
 		// upload filepath filename
-		commandArray[0] = "move";
+		commandArray[0] = "";
 		commandArray[1] = "C:\\Users\\pharre\\workspace\\GoogleDocuments\\myfile.txt";
 		commandArray[2] = "myfile.txt";
 		doc.executeUpload(commandArray);
