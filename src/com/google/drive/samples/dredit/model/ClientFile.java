@@ -1,24 +1,10 @@
-/*
- * Copyright (c) 2012 Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License. You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied. See the License for the specific language governing permissions and limitations under
- * the License.
- */
-
 package com.google.drive.samples.dredit.model;
+
+import java.io.Reader;
 
 import com.google.api.services.drive.model.File;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-
-import java.io.Reader;
 
 /**
  * An object representing a File and its content, for use while interacting with
@@ -52,7 +38,7 @@ public class ClientFile {
 	 * Content body of file.
 	 */
 	public String content;
-	
+
 	/**
 	 * Parent folders of file.
 	 */
@@ -66,6 +52,18 @@ public class ClientFile {
 
 	/**
 	 * Creates a new ClientFile based on the given File and content.
+	 */
+	public ClientFile(File file, String content) {
+		this.resource_id = file.getId();
+		this.title = file.getTitle();
+		this.description = file.getDescription();
+		this.mimeType = file.getMimeType();
+		this.content = content;
+	}
+
+	/**
+	 * Creates a new ClientFile based on the given File and content and the
+	 * parents.
 	 */
 	public ClientFile(File file, String content, String parents) {
 		this.resource_id = file.getId();

@@ -14,6 +14,12 @@
 
 package com.google.drive.samples.dredit;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Collection;
+
+import javax.servlet.http.HttpServletRequest;
+
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.auth.oauth2.CredentialStore;
 import com.google.api.client.extensions.appengine.auth.oauth2.AppEngineCredentialStore;
@@ -27,13 +33,8 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson.JacksonFactory;
 import com.google.api.services.oauth2.Oauth2;
+import com.google.api.services.oauth2.Oauth2.Builder;
 import com.google.api.services.oauth2.model.Userinfo;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Collection;
-
-import javax.servlet.http.HttpServletRequest;
 
 /**
  * Object that manages credentials associated with this Drive application and
@@ -134,7 +135,7 @@ public class CredentialMediator {
 	 *            User's Google ID.
 	 * @return Stored GoogleCredential if found, {@code null} otherwise.
 	 */
-	private Credential getStoredCredential(String userId) {
+	private Credential getStoredCredential(String userId) throws IOException {
 		Credential credential = buildEmptyCredential();
 		if (credentialStore.load(userId, credential)) {
 			return credential;
@@ -148,7 +149,7 @@ public class CredentialMediator {
 	 * @param userId
 	 *            User's Google ID.
 	 */
-	private void deleteStoredCredential(String userId) {
+	private void deleteStoredCredential(String userId) throws IOException {
 		if (userId != null) {
 			Credential credential = getStoredCredential(userId);
 			credentialStore.delete(userId, credential);
@@ -196,8 +197,9 @@ public class CredentialMediator {
 
 		// Create a user info service, and make a request to get the user's
 		// info.
-		Oauth2 userInfoService = Oauth2.builder(TRANSPORT, JSON_FACTORY)
-				.setHttpRequestInitializer(credential).build();
+
+		Builder b = new Builder(TRANSPORT, JSON_FACTORY, credential);
+		Oauth2 userInfoService = b.build();
 		try {
 			userInfo = userInfoService.userinfo().get().execute();
 			if (userInfo == null) {
@@ -240,7 +242,7 @@ public class CredentialMediator {
 	/**
 	 * Deletes the credential of the active session.
 	 */
-	public void deleteActiveCredential() {
+	public void deleteActiveCredential() throws IOException {
 		String userId = (String) request.getSession().getAttribute(USER_ID_KEY);
 		this.deleteStoredCredential(userId);
 	}
@@ -262,7 +264,8 @@ public class CredentialMediator {
 	 *             No refresh token could be retrieved from the available
 	 *             sources.
 	 */
-	public Credential getActiveCredential() throws NoRefreshTokenException {
+	public Credential getActiveCredential() throws NoRefreshTokenException,
+			IOException {
 		String userId = (String) request.getSession().getAttribute(USER_ID_KEY);
 		Credential credential = null;
 		try {

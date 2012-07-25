@@ -1,17 +1,15 @@
 package com.google.drive.samples.dredit;
 
+import java.io.IOException;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import com.google.api.client.auth.oauth2.AuthorizationCodeResponseUrl;
-import com.google.api.client.auth.oauth2.Credential;
 import com.google.appengine.api.users.User;
 import com.google.appengine.api.users.UserService;
 import com.google.appengine.api.users.UserServiceFactory;
 import com.google.drive.samples.dredit.CredentialMediator.NoRefreshTokenException;
-
-import java.io.IOException;
-
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 /**
  * Servlet handling the OAuth callback from the authentication service. We are
@@ -36,7 +34,7 @@ public class OAuth2CodeCallbackHandlerServlet extends DrEditServlet {
 	 * authorization URL if you have multiple possible URL to redirect people
 	 * to.
 	 */
-	public static final String REDIRECT_URL = "/eddredit";
+	public static final String REDIRECT_URL = "/index.html";
 
 	// public static final String REDIRECT_URL =
 	// "https://eddredit.appspot.com/eddredit";
@@ -71,7 +69,6 @@ public class OAuth2CodeCallbackHandlerServlet extends DrEditServlet {
 		if (req.getQueryString() != null) {
 			fullUrlBuf.append('?').append(req.getQueryString());
 		}
-		System.out.println("fullUrlBuf: " + fullUrlBuf.toString());
 
 		AuthorizationCodeResponseUrl authResponse = new AuthorizationCodeResponseUrl(
 				fullUrlBuf.toString());
