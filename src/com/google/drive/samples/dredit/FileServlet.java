@@ -14,6 +14,10 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.googleapis.GoogleHeaders;
+import com.google.api.client.googleapis.batch.BatchRequest;
+import com.google.api.client.googleapis.batch.json.JsonBatchCallback;
+import com.google.api.client.googleapis.json.GoogleJsonError;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.googleapis.media.MediaHttpDownloader;
 import com.google.api.client.http.ByteArrayContent;
@@ -21,7 +25,9 @@ import com.google.api.client.http.GenericUrl;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.Drive.Builder;
 import com.google.api.services.drive.Drive.Files.Get;
+import com.google.api.services.drive.Drive.Files.Insert;
 import com.google.api.services.drive.model.File;
+import com.google.api.services.drive.model.FileList;
 import com.google.api.services.drive.model.ParentReference;
 import com.google.appengine.api.files.AppEngineFile;
 import com.google.appengine.api.files.FileReadChannel;
@@ -47,30 +53,98 @@ public class FileServlet extends DrEditServlet {
 	 * Given a {@code file_id} URI parameter, return a JSON representation of
 	 * the given file.
 	 */
+//	@Override
+//	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+//
+//		Drive drive = getDriveService(req, resp);
+//		String fileId = req.getParameter("file_id");
+//		
+//		System.out.println("file id: " + fileId);
+//		
+//
+//		if (fileId == null) {
+//			System.out.println("file id was null");
+//			sendError(resp, 400, "The `file_id` URI parameter must be specified.");
+//			return;
+//		}
+//		
+//		File file = null;
+//		try {
+//			file = drive.files().get(fileId).execute();
+//			System.out.println("****file " + file);
+//		} catch (GoogleJsonResponseException e) {
+//			System.out.println("problem opening file");
+//			System.out.println(e.getMessage());
+//			System.out.println();
+//			if (e.getStatusCode() == 401) { 
+//				// The user has revoked our token or it is otherwise bad.
+//				// Delete the local copy so that their next page load will recover.
+//				deleteCredential(req, resp);
+//				sendError(resp, 401, "Unauthorized");
+//				return;
+//			}
+//		}
+//				
+//		if (file != null) {
+//			
+//			// get all the metadata for a file
+//			// does this by going two levels up in the file hierarchy
+//			// there is not enough error handling in this area
+//			List<ParentReference> parents = file.getParents();
+//			
+//			StringBuffer buffer = new StringBuffer();
+//			buffer.append("{ ");
+//			File parentFile = drive.files().get(parents.get(0).getId()).execute();
+//			List<ParentReference> grandParents = parentFile.getParents();
+//			ParentReference grandParent = grandParents.get(0);
+//			File grandParentFile = drive.files().get(grandParent.getId()).execute();
+//			buffer.append(" \"" + grandParentFile.getTitle() + "\": \"" + parentFile.getTitle() + "\"");
+//			for (int i=1; i<parents.size(); i++) {
+//				parentFile = drive.files().get(parents.get(i).getId()).execute();
+//				grandParents = parentFile.getParents();
+//				grandParent = grandParents.get(0);
+//				grandParentFile = drive.files().get(grandParent.getId()).execute();
+//				buffer.append(", \"" + grandParentFile.getTitle() + "\": \"" + parentFile.getTitle() + "\"");
+//			}
+//			buffer.append(" }");
+//			String parentsString = buffer.toString();
+//			
+//			CredentialMediator cm = getCredentialMediator(req, resp);
+//
+//			String content = downloadFileContent(drive, file);
+//
+//			if (content == null) {
+//				content = "";
+//			}
+//			resp.setContentType(JSON_MIMETYPE);
+//			resp.getWriter().print(new ClientFile(file, content, parentsString).toJson());
+//		} else {
+//			sendError(resp, 404, "File not found");
+//		}
+//
+//	}
+	
+	/**
+	 * This writes all the labels to the Drive
+	 * @param file_id - the Drive id of the file to be split and labeled
+	 */
 	@Override
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-
-		Drive drive = getDriveService(req, resp);
+		
+		Drive service = getDriveService(req, resp);
 		String fileId = req.getParameter("file_id");
-		
-		System.out.println("file id: " + fileId);
-		
 
 		if (fileId == null) {
-			System.out.println("file id was null");
 			sendError(resp, 400, "The `file_id` URI parameter must be specified.");
 			return;
 		}
-		
+
 		File file = null;
 		try {
-			file = drive.files().get(fileId).execute();
-			System.out.println("****file " + file);
+			file = service.files().get(fileId).execute();
 		} catch (GoogleJsonResponseException e) {
-			System.out.println("problem opening file");
-			System.out.println(e.getMessage());
-			System.out.println();
-			if (e.getStatusCode() == 401) { 
+			e.printStackTrace();
+			if (e.getStatusCode() == 401) {
 				// The user has revoked our token or it is otherwise bad.
 				// Delete the local copy so that their next page load will recover.
 				deleteCredential(req, resp);
@@ -78,124 +152,19 @@ public class FileServlet extends DrEditServlet {
 				return;
 			}
 		}
-				
+		
 		if (file != null) {
-			
-			// get all the metadata for a file
-			// does this by going two levels up in the file hierarchy
-			// there is not enough error handling in this area
-			List<ParentReference> parents = file.getParents();
-			
-			StringBuffer buffer = new StringBuffer();
-			buffer.append("{ ");
-			File parentFile = drive.files().get(parents.get(0).getId()).execute();
-			List<ParentReference> grandParents = parentFile.getParents();
-			ParentReference grandParent = grandParents.get(0);
-			File grandParentFile = drive.files().get(grandParent.getId()).execute();
-			buffer.append(" \"" + grandParentFile.getTitle() + "\": \"" + parentFile.getTitle() + "\"");
-			for (int i=1; i<parents.size(); i++) {
-				parentFile = drive.files().get(parents.get(i).getId()).execute();
-				grandParents = parentFile.getParents();
-				grandParent = grandParents.get(0);
-				grandParentFile = drive.files().get(grandParent.getId()).execute();
-				buffer.append(", \"" + grandParentFile.getTitle() + "\": \"" + parentFile.getTitle() + "\"");
-			}
-			buffer.append(" }");
-			String parentsString = buffer.toString();
-			
-			CredentialMediator cm = getCredentialMediator(req, resp);
 
-			String content = downloadFileContent(drive, file);
-
-			if (content == null) {
-				content = "";
-			}
+			String content = "asdf jkl;";
+			AppEngineFile blobFile = downloadFileContentToBlob(service, file); // now returns aef
+			writeDocsLabelsFromBlobStandardFormat(blobFile, service);
+			
 			resp.setContentType(JSON_MIMETYPE);
-			resp.getWriter().print(new ClientFile(file, content, parentsString).toJson());
+			resp.getWriter().print(new ClientFile(file, content).toJson());
 		} else {
 			sendError(resp, 404, "File not found");
 		}
-
 	}
-	
-//	@Override
-//	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-//
-//		DocsService docsService = new DocsService("Edward's application");
-//
-//		Drive service = getDriveService(req, resp);
-//		String fileId = req.getParameter("file_id");
-//
-//		if (fileId == null) {
-//			sendError(resp, 400, "The `file_id` URI parameter must be specified.");
-//			return;
-//		}
-//
-//		File file = null;
-//		try {
-//			file = service.files().get(fileId).execute();
-//		} catch (GoogleJsonResponseException e) {
-//			e.printStackTrace();
-//			if (e.getStatusCode() == 401) {
-//				// The user has revoked our token or it is otherwise bad.
-//				// Delete the local copy so that their next page load will
-//				// recover.
-//				deleteCredential(req, resp);
-//				sendError(resp, 401, "Unauthorized");
-//				return;
-//			}
-//		}
-//
-//		if (file != null) {
-//
-//			// String content = downloadFileContent(service, file);
-//			//
-//			// CredentialMediator cm = getCredentialMediator(req, resp);
-//			// Credential credential;
-//			// try {
-//			// credential = cm.getActiveCredential();
-//			// try {
-//			// System.out.println("calling write docs labels");
-//			// writeDocsLabels(content, service.getApplicationName(),
-//			// credential, service);
-//			// } catch (ServiceException e) {
-//			// e.printStackTrace();
-//			// }
-//			// } catch (NoRefreshTokenException e) {
-//			// e.printStackTrace();
-//			// }
-//
-//			String content = "asdf jkl;";
-//			AppEngineFile blobFile = downloadFileContentToBlob(service, file); // now
-//																				// returns
-//																				// aef
-//
-//			writeDocsLabelsFromBlobStandardFormat(blobFile, service);
-//
-//			// get parents
-//			String parents = null;
-//
-//			// String parents = "";
-//			// List<ParentReference> list = file.getParentReference();
-//			// for (int i = 0; i < list.size(); i++) {
-//			// String id = list.get(i).getId();
-//			// File f = service.files().get(id).execute();
-//			// File grandparent = service.files()
-//			// .get(f.getParentReference().get(0).getId()).execute();
-//			// parents += grandparent.getTitle() + ": ";
-//			// parents += f.getTitle() + "\n";
-//			// }
-//			// System.out.println("parents\n" + parents);
-//			// if (content == null) {
-//			// content = "";
-//			// }
-//
-//			resp.setContentType(JSON_MIMETYPE);
-//			resp.getWriter().print(new ClientFile(file, content, parents).toJson());
-//		} else {
-//			sendError(resp, 404, "File not found");
-//		}
-//	}
 
 	/**
 	 * Create a new file given a JSON representation, and return the JSON
@@ -389,66 +358,215 @@ public class FileServlet extends DrEditServlet {
 	 * 
 	 * return downloadFile(url); }
 	 */
+	
+	class GetCallback extends JsonBatchCallback<File> {
+		private File file;
 
+		public File getFile() {
+			return file;
+		}
+		@Override
+		public void onFailure(GoogleJsonError e, GoogleHeaders responseHeaders) throws IOException {
+			log(e.getErrors().get(0).getMessage());
+		}
+		@Override
+		public void onSuccess(File t, GoogleHeaders responseHeaders) {
+			this.file = t;
+		}
+	};
+	
+	class FileListCallback extends JsonBatchCallback<FileList> {
+		private FileList fileList;
+
+		public FileList getFileList() {
+			return fileList;
+		}		
+		
+		@Override
+		public void onFailure(GoogleJsonError e, GoogleHeaders responseHeaders) throws IOException {
+			log(e.getErrors().get(0).getMessage());
+		}
+		@Override
+		public void onSuccess(FileList t, GoogleHeaders responseHeaders) {
+			this.fileList = t;
+		}
+	};
+	
 	/**
 	 * @param blobFile
-	 * @param drive
+	 * @param service
 	 * @throws FileNotFoundException
 	 * @throws LockException
 	 * @throws IOException
 	 */
-	private void writeDocsLabelsFromBlobStandardFormat(AppEngineFile blobFile, Drive drive)
+	private void writeDocsLabelsFromBlobStandardFormat(AppEngineFile blobFile, Drive service)
 			throws FileNotFoundException, LockException, IOException {
-
+		String optionalRootCollectionId = "kljkljlkjlkjlkj";
+		// old version with no batching
 		FileService fileService = FileServiceFactory.getFileService();
 		FileReadChannel readChannel = fileService.openReadChannel(blobFile, false);
 		BufferedReader reader = new BufferedReader(Channels.newReader(readChannel, "UTF8"));
 
 		String metadataline = reader.readLine();
-		String firstDataline = reader.readLine();
 
 		String[] metadataArray = metadataline.split("\t");
-		String[] data = firstDataline.split("\t");
-		ArrayList<File> metadataField = new ArrayList<File>();
-		ArrayList<File> metadataValue = new ArrayList<File>();
+		for (int i = 0; i < metadataArray.length; i++)
+			metadataArray[i] = metadataArray[i].trim();
 
-		// make root folder
-		String desc = "Description";
-		int descIndex;
-		for (descIndex = 0; descIndex < metadataArray.length; descIndex++) {
-			if (metadataArray[descIndex].equals(desc)) {
-				break;
+		File rootFolder = null;
+		try {
+			rootFolder = service.files().get(optionalRootCollectionId).execute();
+		} catch (Exception e) {	}
+		
+		BatchRequest batch = service.batch();
+		FileCallback rootFolderCallback = new FileCallback();
+		if (rootFolder == null) {
+			// Create root folder
+			Insert rootFolderInsert = service.files().insert(new File().setTitle(blobFile.getNamePart()).setMimeType(FOLDER_MIME_TYPE));
+			rootFolderInsert.queue(batch, rootFolderCallback);
+		}
+		
+		// Keep track of all metadata key folders that already exist and their metadata value subfolders
+		HashMap<String,String> id2Title = new HashMap<String,String>();
+		HashMap<String,File> metadataKeyFolders = new HashMap<String,File>();
+		HashMap<String,FileListCallback> metadataChildrenCallbacks = new HashMap<String,FileListCallback>();
+		if (rootFolder != null) { // Get metadata key folders
+			List<File> metadataKeyFileList = service.files().list().setQ("'"+rootFolder.getId()+"' in parents").execute().getItems();
+			for (File file : metadataKeyFileList) {
+				metadataKeyFolders.put(file.getTitle(),file);
+				id2Title.put(file.getId(), file.getTitle());
+				com.google.api.services.drive.Drive.Files.List metadataChildrenFileList = service.files().list().setQ("'"+file.getId()+"' in parents");
+				FileListCallback fileListCallback = new FileListCallback();
+				metadataChildrenFileList.queue(batch, fileListCallback);
+				metadataChildrenCallbacks.put(file.getTitle(), fileListCallback);
 			}
 		}
-		File rootFolder = new File();
-		rootFolder.setTitle(data[descIndex]);
-		rootFolder.setMimeType(FOLDER_MIME_TYPE);
-		while (true) {
-			try {
-				rootFolder = drive.files().insert(rootFolder).execute();
-				break;
-			} catch (GoogleJsonResponseException e) {
-				try {
-					Thread.sleep(1000);
-				} catch (InterruptedException e1) {
-					e1.printStackTrace();
-				}
-			}
-		}
-
+		batch.execute(); // Now create all the new folders and get the children subfolders
+		if (rootFolder == null) // Now it's been created
+			rootFolder = rootFolderCallback.getFile();
+		
+		// Creates the new metadata key folders
+		List<FileCallback> metadataKeyCallbacks = new ArrayList<FileCallback>();				
+		ArrayList<ParentReference> list = new ArrayList<ParentReference>();
+		list.add(new ParentReference().setId(rootFolder.getId()));
 		int dataStart = 0;
 		for (int i = 0; i < metadataArray.length; i++) {
 			if (metadataArray[i].equals("X")) {
 				dataStart = i;
 				break;
 			}
-			File folder = new File();
-			folder.setTitle(metadataArray[i]);
-			folder.setMimeType(FOLDER_MIME_TYPE);
-			folder.setParents(Arrays.asList(new ParentReference().setId(rootFolder.getId())));
+			if (!metadataKeyFolders.containsKey(metadataArray[i])) {
+				Insert metadataKeyInsert = service.files().insert(new File().setTitle(metadataArray[i]).setMimeType(FOLDER_MIME_TYPE).setParents(list));
+				FileCallback metadataKeyCallback = new FileCallback();
+				metadataKeyCallbacks.add(metadataKeyCallback);
+				metadataKeyInsert.queue(batch,metadataKeyCallback);
+			}
+			if (batch.size() > 10)
+				batch.execute();
+		}
+		if (batch.size() > 0)
+			batch.execute(); // All metadata key folders have been created
+		
+		HashMap<String,HashMap<String,File>> metadataChildren = new HashMap<String,HashMap<String,File>>();
+		// Now we need to correct the folder hierarchy
+		for (FileCallback callback : metadataKeyCallbacks) {
+			id2Title.put(callback.getFile().getId(), callback.getFile().getTitle());
+			metadataKeyFolders.put(callback.getFile().getTitle(), callback.getFile()); // Add to master list
+			if (!metadataChildren.containsKey(callback.getFile().getTitle()))
+				metadataChildren.put(callback.getFile().getTitle(), new HashMap<String,File>());
+		}
+		
+		// Now create an up to date child list from the new metadata and the old
+		for (String metadataKey : metadataChildrenCallbacks.keySet()) {
+			if (!metadataChildren.containsKey(metadataKey))
+				metadataChildren.put(metadataKey, new HashMap<String,File>());			
+			HashMap<String,File> metadataKeyChildren = metadataChildren.get(metadataKey);
+			for (File file : metadataChildrenCallbacks.get(metadataKey).getFileList().getItems())
+				metadataKeyChildren.put(file.getTitle(), file);			
+		}
+		
+		// Now create the metadata values that don't already exist
+		String line;
+		String [] firstData = null;
+		List<FileCallback> metadataValCallbacks = new ArrayList<FileCallback>();				
+		while ((line = reader.readLine()) != null) {
+			String [] data = line.split("\t");
+			if (firstData == null)
+				firstData = line.split("\t");			
+			
+			for (int i = 0; i < dataStart; i++) {
+				if (data[i].equals(""))
+					data[i] = firstData[i];
+				data[i] = data[i].trim();
+				String metadataKey = metadataArray[i]; 
+				// Only create if new
+				if (!metadataChildren.get(metadataKey).containsKey(data[i])) {						
+					ArrayList<ParentReference> valList = new ArrayList<ParentReference>();
+					valList.add(new ParentReference().setId(metadataKeyFolders.get(metadataKey).getId()));		
+					Insert metadataValInsert = service.files().insert(new File().setTitle(data[i]).setMimeType(FOLDER_MIME_TYPE).setParents(valList));
+					FileCallback metadataValCallback = new FileCallback();
+					metadataValCallback.setHttpRequest(metadataValInsert);
+					metadataValCallbacks.add(metadataValCallback);
+					metadataValInsert.queue(batch,metadataValCallback);
+					HashMap<String,File> metadataKeyChildren = metadataChildren.get(metadataKey);
+					metadataKeyChildren.put(data[i], null);
+					System.out.println(metadataKey + ": " + data[i]);
+				}
+				if (batch.size() > 10) {
+					batch.execute();	
+					try {
+						Thread.sleep(2000);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+			}
+		}
+		if (batch.size() > 0) {
+			batch.execute();
+			for (FileCallback callback : metadataValCallbacks) {
+				List<ParentReference> prList = callback.getFile().getParents();
+				for (ParentReference pr : prList) {
+					String metadataKey = id2Title.get(pr.getId());
+					//if (!metadataChildren.containsKey(metadataKey))
+					//	metadataChildren.put(metadataKey, new HashMap<String,File>());
+					HashMap<String,File> metadataKeyChildren = metadataChildren.get(metadataKey); 
+					metadataKeyChildren.put(callback.getFile().getTitle(), callback.getFile());
+				}
+			}
+		}
+		
+		// Now to the data
+		readChannel = fileService.openReadChannel(blobFile, false);
+		reader = new BufferedReader(Channels.newReader(readChannel, "UTF8"));
+		// Now open the file again and actually upload the data
+		reader.readLine(); // Read header which we don't need
+		while ((line = reader.readLine()) != null) {
+			String [] data = line.split("\t");
+						
+			ArrayList<ParentReference> dataList = new ArrayList<ParentReference>();
+			for (int i = 0; i < dataStart; i++) {
+				if (data[i].equals(""))
+					data[i] = firstData[i];
+				String metadataKey = metadataArray[i];
+				File parent = metadataChildren.get(metadataKey).get(data[i]);
+				dataList.add(new ParentReference().setId(parent.getId()));
+			}
+			
+			StringBuffer buffer = new StringBuffer();
+			buffer.append("X\tY\n");			
+			for (int i = dataStart+1; i < data.length; i++)
+				buffer.append(metadataArray[i]).append("\t").append(data[i]).append("\n");
+			
+			File dataFile = new File();
+			dataFile.setTitle(data[dataStart]);
+			dataFile.setMimeType("text/plain");
+			dataFile.setParents(dataList);
+			ByteArrayContent byteArrayContent = new ByteArrayContent("text/plain", buffer.toString().getBytes());
 			while (true) {
 				try {
-					folder = drive.files().insert(folder).execute();
+					dataFile = service.files().insert(dataFile, byteArrayContent).execute();
 					break;
 				} catch (GoogleJsonResponseException e) {
 					try {
@@ -458,43 +576,11 @@ public class FileServlet extends DrEditServlet {
 					}
 				}
 			}
-			metadataField.add(folder);
 		}
+			
 
-		HashMap<String, File> hashMap = new HashMap<String, File>();
-
-		// first row - metadata values
-		for (int i = 0; i < dataStart; i++) {
-			File folder = new File();
-			folder.setTitle(data[i]);
-			folder.setMimeType(FOLDER_MIME_TYPE);
-			folder.setParents(Arrays.asList(new ParentReference().setId(metadataField.get(i).getId())));
-			while (true) {
-				try {
-					folder = drive.files().insert(folder).execute();
-					break;
-				} catch (GoogleJsonResponseException e) {
-					try {
-						Thread.sleep(1000);
-					} catch (InterruptedException e1) {
-						e1.printStackTrace();
-					}
-				}
-			}
-			metadataValue.add(folder);
-			hashMap.put(data[i], folder);
-
-		}
-
-		for (String string : hashMap.keySet()) {
-			System.out.println(string);
-		}
-
-		// first row - data values
-		StringBuffer buffer = new StringBuffer();
-		for (int i = dataStart; i < data.length; i++) {
-			buffer.append(metadataArray[i] + "\t" + data[i] + "\n");
-		}
+		
+/*		
 		File dataFile = new File();
 		dataFile.setTitle(data[dataStart]);
 		dataFile.setMimeType("text/plain");
@@ -506,7 +592,7 @@ public class FileServlet extends DrEditServlet {
 		ByteArrayContent byteArrayContent = new ByteArrayContent("text/plain", buffer.toString().getBytes());
 		while (true) {
 			try {
-				dataFile = drive.files().insert(dataFile, byteArrayContent).execute();
+				dataFile = service.files().insert(dataFile, byteArrayContent).execute();
 				break;
 			} catch (GoogleJsonResponseException e) {
 				try {
@@ -523,7 +609,12 @@ public class FileServlet extends DrEditServlet {
 			metadataValue.clear();
 			list.clear();
 			String[] dataline = line.split("\t"); // need no nulls
-
+			for (int i = 0; i < dataline.length; i++) {
+				if (dataline[i].equals("")) {
+					dataline[i] = data[i];
+				}
+			}
+			
 			// find or create the correct folder
 			for (int i = 0; i < dataStart; i++) {
 
@@ -533,11 +624,10 @@ public class FileServlet extends DrEditServlet {
 					File folder = new File();
 					folder.setTitle(dataline[i]);
 					folder.setMimeType(FOLDER_MIME_TYPE);
-					folder.setParents(Arrays.asList(new ParentReference().setId(metadataField.get(i)
-							.getId())));
+					folder.setParents(Arrays.asList(new ParentReference().setId(metadataField.get(i).getId())));
 					while (true) {
 						try {
-							folder = drive.files().insert(folder).execute();
+							folder = service.files().insert(folder).execute();
 							break;
 						} catch (GoogleJsonResponseException e) {
 							try {
@@ -568,7 +658,7 @@ public class FileServlet extends DrEditServlet {
 			byteArrayContent = new ByteArrayContent("text/plain", buffer.toString().getBytes()); // bytearraycontent
 			while (true) {
 				try {
-					dataFile = drive.files().insert(dataFile, byteArrayContent).execute();
+					dataFile = service.files().insert(dataFile, byteArrayContent).execute();
 					break;
 				} catch (GoogleJsonResponseException e) {
 					try {
@@ -579,58 +669,239 @@ public class FileServlet extends DrEditServlet {
 				}
 			}
 		}
-	}
+		*/
 
-	private void writeDocsLabels(String content, String applicationName, Credential credential, Drive drive)
-			throws IOException {
-
-		// make root folder
-		String desc = "Description\t";
-		int startIndex = content.indexOf(desc) + desc.length();
-		String description = content.substring(startIndex, content.indexOf("\n", startIndex));
-		File rootFolder = new File();
-		rootFolder.setTitle(description);
-		rootFolder.setMimeType(FOLDER_MIME_TYPE);
-		rootFolder = drive.files().insert(rootFolder).execute();
-
-		String[][] metadata = readMetadata(content, drive);
-
-		ArrayList<File>[] parents = makeFolders(metadata, rootFolder, drive, content);
-
-		for (int i = 0; i < parents[1].size(); i++) {
-			System.out.println(parents[1].get(i).getTitle());
-		}
-
-		String[] xyStrings = readData(content, drive);
-		// File[] parents = new File[xyStrings.length];
-		// for (int i=0; i<xyStrings.length; i++) {
-		// parents[i] = rootFolder;
-		// }
-
-		for (int i = 1; i < xyStrings.length; i++) {
-			File file = new File();
-			file.setTitle("data");
-			file.setMimeType("text/plain");
-			ArrayList<ParentReference> list = new ArrayList<ParentReference>();
-			for (File parent : parents[i]) {
-				list.add(new ParentReference().setId(parent.getId()));
-			}
-
-			file.setParents(list);
-			ByteArrayContent bac = new ByteArrayContent("text/plain", xyStrings[i].getBytes());
-			while (true) {
-				try {
-					file = drive.files().insert(file, bac).execute();
-					break;
-				} catch (GoogleJsonResponseException e) {
-					try {
-						Thread.sleep(1000);
-					} catch (InterruptedException e1) {
-						e1.printStackTrace();
-					}
-				}
-			}
-		}
+//		FileService fileService = FileServiceFactory.getFileService();
+//		FileReadChannel readChannel = fileService.openReadChannel(blobFile, false);
+//		BufferedReader reader = new BufferedReader(Channels.newReader(readChannel, "UTF8"));
+//
+//		String metadataline = reader.readLine();
+//		String firstDataline = reader.readLine();
+//
+//		String[] metadataArray = metadataline.split("\t");
+//		String[] data = firstDataline.split("\t");
+//		ArrayList<File> metadataField = new ArrayList<File>();
+//		ArrayList<File> metadataValue = new ArrayList<File>();
+//		ArrayList<GetCallback> getValCallbacks = new ArrayList<GetCallback>();
+//
+//		// make root folder
+//		String desc = "description";
+//		int descIndex;
+//		for (descIndex = 0; descIndex < metadataArray.length; descIndex++) {
+//			if (metadataArray[descIndex].equalsIgnoreCase((desc))) {
+//				break;
+//			}
+//		}
+//		File rootFolder = new File();
+//		rootFolder.setTitle(data[descIndex]);
+//		rootFolder.setMimeType(FOLDER_MIME_TYPE);
+//		while (true) {
+//			try {
+//				rootFolder = service.files().insert(rootFolder).execute();
+//				break;
+//			} catch (GoogleJsonResponseException e) {
+//				try {
+//					Thread.sleep(1000);
+//				} catch (InterruptedException e1) {
+//					e1.printStackTrace();
+//				}
+//			}
+//		}
+//		
+//		BatchRequest batch = service.batch();
+//		
+//		// metadata categories
+//		List<GetCallback> getCatCallbacks = new ArrayList<GetCallback>();
+//		
+//		int dataStart = 0;
+//		for (int i = 0; i < metadataArray.length; i++) {
+//			if (metadataArray[i].equals("X")) {
+//				dataStart = i;
+//				break;
+//			}
+//			File folder = new File();
+//			folder.setTitle(metadataArray[i]);
+//			folder.setMimeType(FOLDER_MIME_TYPE);
+//			folder.setParents(Arrays.asList(new ParentReference().setId(rootFolder.getId())));
+//			Insert insert = service.files().insert(folder);
+//			GetCallback getBack = new GetCallback();
+//			getCatCallbacks.add(getBack);
+//			insert.queue(batch, getBack);
+//			metadataField.add(folder);
+//		}
+//		batch.execute();
+//		
+//		HashMap<String, File> hashMap = new HashMap<String, File>();
+//
+//		// first row - metadata values
+//		for (int i = 0; i < dataStart; i++) {
+//			File folder = new File();
+//			folder.setTitle(data[i]);
+//			folder.setMimeType(FOLDER_MIME_TYPE);
+//			folder.setParents(Arrays.asList(new ParentReference().setId(getCatCallbacks.get(i).getFile().getId())));
+//			Insert insert = service.files().insert(folder);
+//			GetCallback getBack = new GetCallback();
+//			getValCallbacks.add(getBack);
+//			insert.queue(batch, getBack);
+//			metadataValue.add(folder);
+//			hashMap.put(data[i], folder);
+//
+//		}
+//		batch.execute();
+//
+//		for (String string : hashMap.keySet()) {
+//			System.out.println(string);
+//		}
+//
+//		// first row - data values
+//		StringBuffer buffer = new StringBuffer();
+//		for (int i = dataStart; i < data.length; i++) {
+//			buffer.append(metadataArray[i] + "\t" + data[i] + "\n");
+//		}
+//		File dataFile = new File();
+//		dataFile.setTitle(data[dataStart]);
+//		dataFile.setMimeType("text/plain");
+//		ArrayList<ParentReference> list = new ArrayList<ParentReference>();
+//		for (GetCallback gcb : getValCallbacks) {
+//			list.add(new ParentReference().setId(gcb.getFile().getId()));
+//		}
+//		dataFile.setParents(list);
+//		ByteArrayContent byteArrayContent = new ByteArrayContent("text/plain", buffer.toString().getBytes());
+//		while (true) {
+//			try {
+//				dataFile = service.files().insert(dataFile, byteArrayContent).execute();
+//				break;
+//			} catch (GoogleJsonResponseException e) {
+//				try {
+//					Thread.sleep(1000);
+//				} catch (InterruptedException e1) {
+//					e1.printStackTrace();
+//				}
+//			}
+//		}
+//
+//		// all the rest of the data
+//		
+//		// metadata 
+//		String line;
+//		while ((line = reader.readLine()) != null) {
+//			metadataValue.clear();
+//			list.clear();
+//			String[] dataline = line.split("\t"); // need no nulls
+//			for (int i=0; i<dataline.length; i++) {
+//				if (dataline[i].equals("")) {
+//					dataline[i] = data[i];
+//				}
+//			}
+//
+//			// find or create the correct folder
+//			for (int i = 0; i < dataStart; i++) {
+//
+//				if (hashMap.containsKey(dataline[i])) { // folder already there
+//					metadataValue.add(hashMap.get(dataline[i]));
+//				}
+//				else { // create new folder
+//					File folder = new File();
+//					folder.setTitle(getValCallbacks.get(i).getFile().getTitle());
+//					//folder.setTitle(dataline[i]);
+//					folder.setMimeType(FOLDER_MIME_TYPE);
+//					folder.setParents(Arrays.asList(new ParentReference().setId(getCatCallbacks.get(i).getFile().getId())));
+//					while (true) {
+//						try {
+//							folder = service.files().insert(folder).execute();
+//							break;
+//						} catch (GoogleJsonResponseException e) {
+//							try {
+//								Thread.sleep(1000);
+//							} catch (InterruptedException e1) {
+//								e1.printStackTrace();
+//							}
+//						}
+//					}
+//					metadataValue.add(folder);
+//					hashMap.put(dataline[i], folder);
+//				}
+//			}
+//
+//			// create the datafile
+//			buffer = new StringBuffer();
+//			for (int i = dataStart; i < dataline.length; i++) {
+//				buffer.append(metadataArray[i] + "\t" + dataline[i] + "\n");
+//			}
+//			dataFile = new File();
+//			dataFile.setTitle(dataline[dataStart]);
+//			dataFile.setMimeType("text/plain");
+//			// set parents
+//			for (File parent : metadataValue) {
+//				list.add(new ParentReference().setId(parent.getId()));
+//			}
+//			dataFile.setParents(list);
+//			byteArrayContent = new ByteArrayContent("text/plain", buffer.toString().getBytes()); // bytearraycontent
+//			while (true) {
+//				try {
+//					dataFile = service.files().insert(dataFile, byteArrayContent).execute();
+//					break;
+//				} catch (GoogleJsonResponseException e) {
+//					try {
+//						Thread.sleep(1000);
+//					} catch (InterruptedException e1) {
+//						e1.printStackTrace();
+//					}
+//				}
+//			}
+//		}
+//	}
+//
+//	private void writeDocsLabels(String content, String applicationName, Credential credential, Drive drive)
+//			throws IOException {
+//
+//		// make root folder
+//		String desc = "Description\t";
+//		int startIndex = content.indexOf(desc) + desc.length();
+//		String description = content.substring(startIndex, content.indexOf("\n", startIndex));
+//		File rootFolder = new File();
+//		rootFolder.setTitle(description);
+//		rootFolder.setMimeType(FOLDER_MIME_TYPE);
+//		rootFolder = drive.files().insert(rootFolder).execute();
+//
+//		String[][] metadata = readMetadata(content, drive);
+//
+//		ArrayList<File>[] parents = makeFolders(metadata, rootFolder, drive, content);
+//
+//		for (int i = 0; i < parents[1].size(); i++) {
+//			System.out.println(parents[1].get(i).getTitle());
+//		}
+//
+//		String[] xyStrings = readData(content, drive);
+//		// File[] parents = new File[xyStrings.length];
+//		// for (int i=0; i<xyStrings.length; i++) {
+//		// parents[i] = rootFolder;
+//		// }
+//
+//		for (int i = 1; i < xyStrings.length; i++) {
+//			File file = new File();
+//			file.setTitle("data");
+//			file.setMimeType("text/plain");
+//			ArrayList<ParentReference> list = new ArrayList<ParentReference>();
+//			for (File parent : parents[i]) {
+//				list.add(new ParentReference().setId(parent.getId()));
+//			}
+//
+//			file.setParents(list);
+//			ByteArrayContent bac = new ByteArrayContent("text/plain", xyStrings[i].getBytes());
+//			while (true) {
+//				try {
+//					file = drive.files().insert(file, bac).execute();
+//					break;
+//				} catch (GoogleJsonResponseException e) {
+//					try {
+//						Thread.sleep(1000);
+//					} catch (InterruptedException e1) {
+//						e1.printStackTrace();
+//					}
+//				}
+//			}
+//		}
 
 		/*
 		 * System.out.println("writedocslabels");

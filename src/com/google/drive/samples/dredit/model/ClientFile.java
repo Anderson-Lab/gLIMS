@@ -62,8 +62,7 @@ public class ClientFile {
 	}
 
 	/**
-	 * Creates a new ClientFile based on the given File and content and the
-	 * parents.
+	 * Creates a new ClientFile based on the given File and content and the parents.
 	 */
 	public ClientFile(File file, String content, String parents) {
 		this.resource_id = file.getId();

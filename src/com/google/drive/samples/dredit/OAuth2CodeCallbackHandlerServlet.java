@@ -34,7 +34,7 @@ public class OAuth2CodeCallbackHandlerServlet extends DrEditServlet {
 	 * authorization URL if you have multiple possible URL to redirect people
 	 * to.
 	 */
-	public static final String REDIRECT_URL = "/index.html";
+	public static final String REDIRECT_URL = "/glims";
 
 	// public static final String REDIRECT_URL =
 	// "https://eddredit.appspot.com/eddredit";
@@ -94,6 +94,7 @@ public class OAuth2CodeCallbackHandlerServlet extends DrEditServlet {
 		}
 
 		resp.sendRedirect(REDIRECT_URL);
+		//req.getRequestDispatcher("/glims.jsp").forward(req, resp);
 	}
 
 }
