@@ -1,4 +1,4 @@
-package com.google.drive.samples.dredit;
+package dsrg.glims;
 
 /* Copyright (c) 2008 Google Inc.
  *

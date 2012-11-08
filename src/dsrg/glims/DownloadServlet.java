@@ -1,9 +1,8 @@
-package com.google.drive.samples.dredit;
+package dsrg.glims;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.net.URL;
 import java.nio.channels.Channels;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,15 +32,10 @@ import com.google.appengine.api.files.AppEngineFile;
 import com.google.appengine.api.files.FileService;
 import com.google.appengine.api.files.FileServiceFactory;
 import com.google.appengine.api.files.FileWriteChannel;
-import com.google.drive.samples.dredit.CredentialMediator.NoRefreshTokenException;
-import com.google.gdata.client.docs.DocsService;
-import com.google.gdata.data.docs.DocumentListEntry;
-import com.google.gdata.data.docs.DocumentListFeed;
-import com.google.gdata.util.ServiceException;
 
-public class DownloadServlet extends DrEditServlet {
+public class DownloadServlet extends GLIMSServlet {
 
-	private static final long serialVersionUID = 1L; // did this because eclipse wanted. not sure why
+	private static final long serialVersionUID = 1L;
 
 	@Override
 	public void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -134,9 +128,8 @@ public class DownloadServlet extends DrEditServlet {
 	 */
 	private void doStdOutput(HttpServletRequest request, HttpServletResponse response, String fileId) throws IOException {
 		Drive service = getDriveService(request, response);
-		//fileId = "0B_4L9UB-A6C3ZDN3b2lEaTdFN1E"; // root folder. remove this after debug
 		
-		// get the the collection to export with drive api
+		// get the the collection to export with drive API
 		File file = null;
 		try {
 			file = service.files().get(fileId).execute();
@@ -158,11 +151,11 @@ public class DownloadServlet extends DrEditServlet {
 			FileWriteChannel writeChannel = fileService.openWriteChannel(blobFile, lock);
 			PrintWriter out = new PrintWriter(Channels.newWriter(writeChannel, "UTF-8"));
 			
-			// set up the hm of hm's representing metadata categories
+			// set up the hashmap of hashmaps representing metadata categories
 			HashMap<String, HashMap<String, String>> fileHash = new HashMap<String, HashMap<String, String>>();
 			HashMap<String, ArrayList<String>> masterMetadata = new HashMap<String, ArrayList<String>>();
 			
-			// get all metadata cats
+			// get all metadata categories
 			List<ChildReference> metadataKeys = service.children().list(fileId).execute().getItems();
 			BatchRequest batch = service.batch();
 			
@@ -187,6 +180,7 @@ public class DownloadServlet extends DrEditServlet {
 				
 			}
 			batch.execute();
+			
 			
 			for (ChildListCallback callback : childCallbacks) {
 				List<ChildReference> metadataVals = callback.getChildren().getItems();
@@ -310,33 +304,33 @@ public class DownloadServlet extends DrEditServlet {
 	 * @return
 	 * @throws IOException
 	 */
-	private DocumentListFeed getFeed(DocsService docsService, DocumentListEntry documentListEntry) throws IOException {
-
-		DocumentListFeed documentListFeed = new DocumentListFeed();
-		String urlString = "https://docs.google.com/feeds/default/private/full/" + getFolderIdFromHref(documentListEntry.getId()) + "/contents";
-		URL url = new URL(urlString);
-		while (true) {
-			try {
-				documentListFeed = docsService.getFeed(url, DocumentListFeed.class);
-				break;
-			} catch (IllegalArgumentException e) {
-				try {
-					Thread.sleep(1000);
-					System.out.println("sleep");
-				} catch (InterruptedException e1) {
-					e1.printStackTrace();
-				}
-			} catch (ServiceException e) {
-				System.out.println("service exception");
-				e.printStackTrace();
-			} catch (Exception e) {
-				System.out.println("exception in get feed");
-				System.out.println("exception type: " + e.getClass());
-				System.out.println(e.getMessage());
-			}
-		}
-		return documentListFeed;
-	}
+//	private DocumentListFeed getFeed(DocsService docsService, DocumentListEntry documentListEntry) throws IOException {
+//
+//		DocumentListFeed documentListFeed = new DocumentListFeed();
+//		String urlString = "https://docs.google.com/feeds/default/private/full/" + getFolderIdFromHref(documentListEntry.getId()) + "/contents";
+//		URL url = new URL(urlString);
+//		while (true) {
+//			try {
+//				documentListFeed = docsService.getFeed(url, DocumentListFeed.class);
+//				break;
+//			} catch (IllegalArgumentException e) {
+//				try {
+//					Thread.sleep(1000);
+//					System.out.println("sleep");
+//				} catch (InterruptedException e1) {
+//					e1.printStackTrace();
+//				}
+//			} catch (ServiceException e) {
+//				System.out.println("service exception");
+//				e.printStackTrace();
+//			} catch (Exception e) {
+//				System.out.println("exception in get feed");
+//				System.out.println("exception type: " + e.getClass());
+//				System.out.println(e.getMessage());
+//			}
+//		}
+//		return documentListFeed;
+//	}
 	
 	/**
 	 * 
@@ -344,6 +338,7 @@ public class DownloadServlet extends DrEditServlet {
 	 * @param fileId
 	 * @return A list of child references of fildId
 	 */
+	@SuppressWarnings("unused")
 	private List<ChildReference> getChildren(Drive service, String fileId) {
 		List<ChildReference> children = null;
 		while (true) {

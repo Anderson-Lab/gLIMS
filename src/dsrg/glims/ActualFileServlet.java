@@ -1,12 +1,10 @@
-package com.google.drive.samples.dredit;
+package dsrg.glims;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.channels.Channels;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -20,15 +18,10 @@ import com.google.api.services.drive.Drive.Builder;
 import com.google.api.services.drive.Drive.Files.Get;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.ParentReference;
-import com.google.appengine.api.files.AppEngineFile;
-import com.google.appengine.api.files.FileService;
-import com.google.appengine.api.files.FileServiceFactory;
-import com.google.appengine.api.files.FileWriteChannel;
-import com.google.drive.samples.dredit.DrEditServlet.FileCallback;
-import com.google.drive.samples.dredit.FileServlet.FileListCallback;
-import com.google.drive.samples.dredit.model.ClientFile;
 
-public class ActualFileServlet extends DrEditServlet {
+import dsrg.glims.model.ClientFile;
+
+public class ActualFileServlet extends GLIMSServlet {
 	
 	/**
 	 * 
@@ -101,7 +94,7 @@ public class ActualFileServlet extends DrEditServlet {
 				File grandParentFile = grandParentCallbacks.get(i).getFile();
 				if (i > 0)
 					buffer.append(", ");
-				buffer.append("\"" + grandParentFile.getTitle() + "\": \"" + parentFile.getTitle() + "\"");
+				buffer.append("\"" + grandParentFile.getTitle() + "\": \"" + parentFile.getTitle() + "\""); // got null pointer here
 			}
 			buffer.append(" }");
 			String parentsString = buffer.toString();
@@ -157,17 +150,17 @@ public class ActualFileServlet extends DrEditServlet {
 		return bos.toString();
 	}
 	
-	private AppEngineFile downloadFileContentToBlob(Drive service, File file) throws IOException {
-		FileService fileService = FileServiceFactory.getFileService();
-		AppEngineFile blobfile = fileService.createNewBlobFile("text/plain");
-		FileWriteChannel writeChannel = fileService.openWriteChannel(blobfile, true);
-
-		GenericUrl genericUrl = new GenericUrl(file.getDownloadUrl());
-		Get get = service.files().get(file.getId());
-		MediaHttpDownloader downloader = get.getMediaHttpDownloader();
-
-		downloader.download(genericUrl, Channels.newOutputStream(writeChannel));
-		writeChannel.closeFinally();
-		return blobfile;
-	}
+//	private AppEngineFile downloadFileContentToBlob(Drive service, File file) throws IOException {
+//		FileService fileService = FileServiceFactory.getFileService();
+//		AppEngineFile blobfile = fileService.createNewBlobFile("text/plain");
+//		FileWriteChannel writeChannel = fileService.openWriteChannel(blobfile, true);
+//
+//		GenericUrl genericUrl = new GenericUrl(file.getDownloadUrl());
+//		Get get = service.files().get(file.getId());
+//		MediaHttpDownloader downloader = get.getMediaHttpDownloader();
+//
+//		downloader.download(genericUrl, Channels.newOutputStream(writeChannel));
+//		writeChannel.closeFinally();
+//		return blobfile;
+//	}
 }

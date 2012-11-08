@@ -12,7 +12,7 @@
  * the License.
  */
 
-package com.google.drive.samples.dredit;
+package dsrg.glims;
 
 import java.io.IOException;
 import java.io.InputStream;

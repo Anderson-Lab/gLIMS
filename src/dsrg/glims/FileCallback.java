@@ -1,4 +1,4 @@
-package com.google.drive.samples.dredit;
+package dsrg.glims;
 
 import java.io.IOException;
 

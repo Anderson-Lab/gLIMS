@@ -1,7 +1,6 @@
-package com.google.drive.samples.dredit;
+package dsrg.glims;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.channels.Channels;
@@ -10,6 +9,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -35,8 +35,13 @@ import com.google.appengine.api.files.FileService;
 import com.google.appengine.api.files.FileServiceFactory;
 import com.google.appengine.api.files.FileWriteChannel;
 import com.google.appengine.api.files.LockException;
-import com.google.drive.samples.dredit.model.ClientFile;
+import com.google.appengine.tools.util.ClientCookie;
 import com.google.gson.Gson;
+
+import dsrg.glims.model.ClientFile;
+
+
+
 
 /**
  * Servlet providing a small API for the DrEdit JavaScript client to use in
@@ -45,84 +50,13 @@ import com.google.gson.Gson;
  * 
  * @author vicfryzel@google.com (Vic Fryzel)
  */
-public class FileServlet extends DrEditServlet {
-
-	private final static String FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
+public class WriteDriveLabelsFileServlet extends GLIMSServlet {
 
 	/**
-	 * Given a {@code file_id} URI parameter, return a JSON representation of
-	 * the given file.
+	 * 
 	 */
-//	@Override
-//	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-//
-//		Drive drive = getDriveService(req, resp);
-//		String fileId = req.getParameter("file_id");
-//		
-//		System.out.println("file id: " + fileId);
-//		
-//
-//		if (fileId == null) {
-//			System.out.println("file id was null");
-//			sendError(resp, 400, "The `file_id` URI parameter must be specified.");
-//			return;
-//		}
-//		
-//		File file = null;
-//		try {
-//			file = drive.files().get(fileId).execute();
-//			System.out.println("****file " + file);
-//		} catch (GoogleJsonResponseException e) {
-//			System.out.println("problem opening file");
-//			System.out.println(e.getMessage());
-//			System.out.println();
-//			if (e.getStatusCode() == 401) { 
-//				// The user has revoked our token or it is otherwise bad.
-//				// Delete the local copy so that their next page load will recover.
-//				deleteCredential(req, resp);
-//				sendError(resp, 401, "Unauthorized");
-//				return;
-//			}
-//		}
-//				
-//		if (file != null) {
-//			
-//			// get all the metadata for a file
-//			// does this by going two levels up in the file hierarchy
-//			// there is not enough error handling in this area
-//			List<ParentReference> parents = file.getParents();
-//			
-//			StringBuffer buffer = new StringBuffer();
-//			buffer.append("{ ");
-//			File parentFile = drive.files().get(parents.get(0).getId()).execute();
-//			List<ParentReference> grandParents = parentFile.getParents();
-//			ParentReference grandParent = grandParents.get(0);
-//			File grandParentFile = drive.files().get(grandParent.getId()).execute();
-//			buffer.append(" \"" + grandParentFile.getTitle() + "\": \"" + parentFile.getTitle() + "\"");
-//			for (int i=1; i<parents.size(); i++) {
-//				parentFile = drive.files().get(parents.get(i).getId()).execute();
-//				grandParents = parentFile.getParents();
-//				grandParent = grandParents.get(0);
-//				grandParentFile = drive.files().get(grandParent.getId()).execute();
-//				buffer.append(", \"" + grandParentFile.getTitle() + "\": \"" + parentFile.getTitle() + "\"");
-//			}
-//			buffer.append(" }");
-//			String parentsString = buffer.toString();
-//			
-//			CredentialMediator cm = getCredentialMediator(req, resp);
-//
-//			String content = downloadFileContent(drive, file);
-//
-//			if (content == null) {
-//				content = "";
-//			}
-//			resp.setContentType(JSON_MIMETYPE);
-//			resp.getWriter().print(new ClientFile(file, content, parentsString).toJson());
-//		} else {
-//			sendError(resp, 404, "File not found");
-//		}
-//
-//	}
+	private static final long serialVersionUID = 1L;
+	private final static String FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 	
 	/**
 	 * This writes all the labels to the Drive
@@ -130,7 +64,7 @@ public class FileServlet extends DrEditServlet {
 	 */
 	@Override
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		
+		//req.getSession().setAttribute("userId", req.getParameter("userId"));
 		Drive service = getDriveService(req, resp);
 		String fileId = req.getParameter("file_id");
 
@@ -229,47 +163,17 @@ public class FileServlet extends DrEditServlet {
 	 * @throws IOException
 	 *             Thrown if the request fails for whatever reason.
 	 */
-	private String downloadFileContent(Drive service, File file) throws IOException {
-
-		// URL url = new URL(file.getDownloadUrl());
-		//
-		// System.out.println(file.getDownloadUrl());
-		//
-		// InputStream is = null; try { is = downloadFile(service,url); } catch
-		// (ServiceException e) { // TODO Auto-generated catch block
-		// e.printStackTrace(); return null; } Scanner infile = new Scanner(is);
-		//
-		// int i = 0; StringBuffer contents = new StringBuffer(); while
-		// (infile.hasNextLine()) { String line = infile.nextLine();
-		// contents.append(line).append("\n"); } return contents.toString();
-
-		GenericUrl u = new GenericUrl(file.getDownloadUrl());
-		Get request = service.files().get(file.getId());
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-		MediaHttpDownloader mhd = request.getMediaHttpDownloader();
-		mhd.setChunkSize(10 * 0x100000);
-		mhd.download(u, bos);
-
-		// FileService fileService = FileServiceFactory.getFileService();
-		//
-		// // Create a new Blob file with mime-type "text/plain"
-		// AppEngineFile blobFile = fileService.createNewBlobFile("text/plain");
-		//
-		// // Open a channel to write to it
-		// boolean lock = true;
-		// FileWriteChannel writeChannel =
-		// fileService.openWriteChannel(blobFile, lock);
-		//
-		// mhd.download(u, Channels.newOutputStream(writeChannel));
-		// return blobFile;
-
-		return bos.toString();
-		/*
-		 * try { return new
-		 * Scanner(response.getContent()).useDelimiter("\\A").next(); } catch
-		 * (java.util.NoSuchElementException e) { return ""; }
-		 */
-	}
+//	private String downloadFileContent(Drive service, File file) throws IOException {
+//
+//		GenericUrl u = new GenericUrl(file.getDownloadUrl());
+//		Get request = service.files().get(file.getId());
+//		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+//		MediaHttpDownloader mhd = request.getMediaHttpDownloader();
+//		mhd.setChunkSize(10 * 0x100000);
+//		mhd.download(u, bos);
+//		
+//		return bos.toString();
+//	}
 
 	private AppEngineFile downloadFileContentToBlob(Drive service, File file) throws IOException {
 		FileService fileService = FileServiceFactory.getFileService();
@@ -401,6 +305,7 @@ public class FileServlet extends DrEditServlet {
 	 */
 	private void writeDocsLabelsFromBlobStandardFormat(AppEngineFile blobFile, Drive service)
 			throws FileNotFoundException, LockException, IOException {
+				
 		String optionalRootCollectionId = "kljkljlkjlkjlkj";
 		// old version with no batching
 		FileService fileService = FileServiceFactory.getFileService();
@@ -491,13 +396,18 @@ public class FileServlet extends DrEditServlet {
 		List<FileCallback> metadataValCallbacks = new ArrayList<FileCallback>();				
 		while ((line = reader.readLine()) != null) {
 			String [] data = line.split("\t");
-			if (firstData == null)
-				firstData = line.split("\t");			
+			if (firstData == null) {
+				firstData = line.split("\t");
+				for (int i = 0; i < firstData.length; i++)
+					firstData[i] = firstData[i].trim();
+			}
 			
 			for (int i = 0; i < dataStart; i++) {
+				data[i] = data[i].trim();
+				if (firstData[i].equals(""))
+					continue;
 				if (data[i].equals(""))
 					data[i] = firstData[i];
-				data[i] = data[i].trim();
 				String metadataKey = metadataArray[i]; 
 				// Only create if new
 				if (!metadataChildren.get(metadataKey).containsKey(data[i])) {						
@@ -510,7 +420,7 @@ public class FileServlet extends DrEditServlet {
 					metadataValInsert.queue(batch,metadataValCallback);
 					HashMap<String,File> metadataKeyChildren = metadataChildren.get(metadataKey);
 					metadataKeyChildren.put(data[i], null);
-					System.out.println(metadataKey + ": " + data[i]);
+					//System.out.println(metadataKey + ": " + data[i]);
 				}
 				if (batch.size() > 10) {
 					batch.execute();	
@@ -523,18 +433,23 @@ public class FileServlet extends DrEditServlet {
 				}
 			}
 		}
-		if (batch.size() > 0) {
+		while (batch.size() > 0) {
 			batch.execute();
 			for (FileCallback callback : metadataValCallbacks) {
-				List<ParentReference> prList = callback.getFile().getParents();
-				for (ParentReference pr : prList) {
-					String metadataKey = id2Title.get(pr.getId());
-					//if (!metadataChildren.containsKey(metadataKey))
-					//	metadataChildren.put(metadataKey, new HashMap<String,File>());
-					HashMap<String,File> metadataKeyChildren = metadataChildren.get(metadataKey); 
-					metadataKeyChildren.put(callback.getFile().getTitle(), callback.getFile());
+				if (callback.getFile() != null) {
+					List<ParentReference> prList = callback.getFile().getParents();
+					for (ParentReference pr : prList) {
+						String metadataKey = id2Title.get(pr.getId());
+						//if (!metadataChildren.containsKey(metadataKey))
+						//	metadataChildren.put(metadataKey, new HashMap<String,File>());
+						HashMap<String,File> metadataKeyChildren = metadataChildren.get(metadataKey); 
+						metadataKeyChildren.put(callback.getFile().getTitle(), callback.getFile());
+					}
+				} else {
+					callback.getHttpRequest().queue(batch, callback);
 				}
 			}
+			System.out.println(batch.size());
 		}
 		
 		// Now to the data
@@ -547,6 +462,9 @@ public class FileServlet extends DrEditServlet {
 						
 			ArrayList<ParentReference> dataList = new ArrayList<ParentReference>();
 			for (int i = 0; i < dataStart; i++) {
+				if (firstData[i].equals(""))
+					continue;
+				data[i] = data[i].trim();
 				if (data[i].equals(""))
 					data[i] = firstData[i];
 				String metadataKey = metadataArray[i];

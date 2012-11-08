@@ -1,4 +1,4 @@
-package com.google.drive.samples.dredit.model;
+package dsrg.glims.model;
 
 import java.util.Collection;
 

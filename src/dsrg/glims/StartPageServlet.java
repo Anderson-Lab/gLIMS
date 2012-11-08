@@ -1,11 +1,6 @@
-package com.google.drive.samples.dredit;
-
-import com.google.drive.samples.dredit.model.State;
-import com.google.gson.Gson;
+package dsrg.glims;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -17,7 +12,7 @@ import javax.servlet.http.HttpServletResponse;
  * 
  * @author vicfryzel@google.com (Vic Fryzel)
  */
-public class StartPageServlet extends DrEditServlet {
+public class StartPageServlet extends GLIMSServlet {
 
 	/**
 	 * Ensure that the user is authorized, and setup the required values for

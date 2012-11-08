@@ -1,4 +1,4 @@
-package com.google.drive.samples.dredit;
+package dsrg.glims;
 
 import java.io.IOException;
 
@@ -9,7 +9,8 @@ import com.google.api.client.auth.oauth2.AuthorizationCodeResponseUrl;
 import com.google.appengine.api.users.User;
 import com.google.appengine.api.users.UserService;
 import com.google.appengine.api.users.UserServiceFactory;
-import com.google.drive.samples.dredit.CredentialMediator.NoRefreshTokenException;
+
+import dsrg.glims.CredentialMediator.NoRefreshTokenException;
 
 /**
  * Servlet handling the OAuth callback from the authentication service. We are
@@ -17,7 +18,7 @@ import com.google.drive.samples.dredit.CredentialMediator.NoRefreshTokenExceptio
  * token and saving it.
  */
 @SuppressWarnings("serial")
-public class OAuth2CodeCallbackHandlerServlet extends DrEditServlet {
+public class OAuth2CodeCallbackHandlerServlet extends GLIMSServlet {
 
 	/** The name of the OAuth code URL parameter */
 	public static final String CODE_URL_PARAM_NAME = "code";

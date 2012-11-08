@@ -1,4 +1,4 @@
-package com.google.drive.samples.dredit;
+package dsrg.glims;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,7 +19,8 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson.JacksonFactory;
 import com.google.api.services.drive.Drive.Files.Insert;
 import com.google.api.services.drive.model.File;
-import com.google.drive.samples.dredit.CredentialMediator.InvalidClientSecretsException;
+
+import dsrg.glims.CredentialMediator.InvalidClientSecretsException;
 
 /**
  * Abstract servlet that sets up credentials and provides some convenience
@@ -27,21 +28,21 @@ import com.google.drive.samples.dredit.CredentialMediator.InvalidClientSecretsEx
  * 
  * @author vicfryzel@google.com (Vic Fryzel)
  */
-public abstract class DrEditServlet extends HttpServlet {
+public abstract class GLIMSServlet extends HttpServlet {
 	
 	private static final long serialVersionUID = 1L;
 	public static final HttpTransport TRANSPORT = new NetHttpTransport();
 	public static final JsonFactory JSON_FACTORY = new JacksonFactory();
 
 	/**
-	 * Default MIME type of files created or handled by DrEdit.
+	 * Default MIME type of files created or handled by gLIMS.
 	 * 
 	 * This is also set in the Google APIs Console under the Drive SDK tab.
 	 */
 	public static final String DEFAULT_MIMETYPE = "text/plain";
 
 	/**
-	 * MIME type to use when sending responses back to DrEdit JavaScript client.
+	 * MIME type to use when sending responses back to gLIMS JavaScript client.
 	 */
 	public static final String JSON_MIMETYPE = "application/json";
 
@@ -60,7 +61,6 @@ public abstract class DrEditServlet extends HttpServlet {
 			"https://www.googleapis.com/auth/userinfo.email",
 			"https://www.googleapis.com/auth/userinfo.profile",
 			"https://docs.google.com/feeds/"/*
-											 * ,
 											 * "https://docs.googleusercontent.com/"
 											 */);
 	class FileCallback extends JsonBatchCallback<File> {
@@ -106,8 +106,7 @@ public abstract class DrEditServlet extends HttpServlet {
 	}
 
 	public InputStream getClientSecretsStream() {
-		return getServletContext()
-				.getResourceAsStream(CLIENT_SECRETS_FILE_PATH);
+		return getServletContext().getResourceAsStream(CLIENT_SECRETS_FILE_PATH);
 	}
 
 	public CredentialMediator getCredentialMediator(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -146,6 +145,8 @@ public abstract class DrEditServlet extends HttpServlet {
 				ioe.printStackTrace();
 				throw new RuntimeException("Failed to redirect for authorization.");
 			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 		return null;
 	}
