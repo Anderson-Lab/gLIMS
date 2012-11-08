@@ -4,9 +4,3 @@
 *.jar
 *.war
 *.ear
-com
-META-INF
-.settings
-.google_apis
-.classpath
-.pom.xml
