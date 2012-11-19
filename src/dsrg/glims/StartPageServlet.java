@@ -14,6 +14,8 @@ import javax.servlet.http.HttpServletResponse;
  */
 public class StartPageServlet extends GLIMSServlet {
 
+	private static final long serialVersionUID = 1L;
+
 	/**
 	 * Ensure that the user is authorized, and setup the required values for
 	 * index.jsp.
