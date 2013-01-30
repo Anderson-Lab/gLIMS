@@ -2,6 +2,7 @@ package dsrg.glims;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,6 +24,7 @@ import com.google.api.services.drive.model.ChildList;
 import com.google.api.services.drive.model.ChildReference;
 import com.google.api.services.drive.model.File;
 import com.hp.hpl.jena.query.Query;
+import com.hp.hpl.jena.query.QueryException;
 import com.hp.hpl.jena.query.QueryExecution;
 import com.hp.hpl.jena.query.QueryExecutionFactory;
 import com.hp.hpl.jena.query.QueryFactory;
@@ -45,7 +47,9 @@ public class SPARQLServlet extends GLIMSServlet {
 	@Override
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
-
+		
+		System.out.println("starting sqarql query get");
+		
 		Drive service = getDriveService(request, response);
 		Model metabolites = null;
 		String fileId = request.getParameter("fileId");
@@ -68,6 +72,8 @@ public class SPARQLServlet extends GLIMSServlet {
 		}
 		
 		if (file != null) {
+			
+			System.out.println(file.getTitle());
 			
 			// set up the hashmap of hashmaps representing metadata categories
 			HashMap<String, HashMap<String, String>> fileHash = new HashMap<String, HashMap<String, String>>();
@@ -163,78 +169,63 @@ public class SPARQLServlet extends GLIMSServlet {
 	        Model model = ModelFactory.createDefaultModel();
 	        
 			for (String fileIdString : fileHash.keySet() ) {
-				
 				for (String metadataCategoryString : fileHash.get(fileIdString).keySet()) {
-					
-			        Property predicate = ResourceFactory.createProperty(metadataCategoryString);
+			        Property predicate = ResourceFactory.createProperty("http://"+metadataCategoryString.replaceAll(" ",""));
+			        //Property predicate = ResourceFactory.createProperty("", metadataCategoryString);
 			        Resource spectrum = model.createResource(fileIdString);
 			        spectrum.addProperty(predicate, fileHash.get(fileIdString).get(metadataCategoryString));
 				}
 			}
 			
+			System.out.println(model);
+			
 			outwriter.println("************************************************************");
 	        outwriter.println("Listing the model");
 	        outwriter.println("************************************************************\n");
+	        
 			// list the statements in the graph
 	        StmtIterator iter = model.listStatements();
 	        // print out the predicate, subject and object of each statement
 	        while (iter.hasNext()) {
-	            Statement stmt      = iter.nextStatement();         // get next statement
-	            Resource  subject   = stmt.getSubject();   // get the subject
-	            Property  predicate = stmt.getPredicate(); // get the predicate
-	            RDFNode   object    = stmt.getObject();    // get the object
+	            Statement stmt      = iter.nextStatement();
+	            Resource  subject   = stmt.getSubject();
+	            Property  predicate = stmt.getPredicate();
+	            RDFNode   object    = stmt.getObject();
 	            
 	            outwriter.print("SUBJECT: " + subject.toString());
 	            outwriter.print("\tPREDICATE: " + predicate.toString() + " ");
 	            if (object instanceof Resource) {
 	                outwriter.print("\tOBJECT: " + object.toString());
-	            } else {
-	                // object is a literal
+	            } else { // object is a literal
 	                outwriter.print("\tOBJECT: \"" + object.toString() + "\"");
 	            }
 	            outwriter.println(" .");
 	        }
 	        
-	        outwriter.println("************************************************************");
-	        outwriter.println("Querying the results with a simple selector");
-	        outwriter.println("************************************************************\n");
-	        
-//	        SimpleSelector selector = new SimpleSelector(null, null, "Seriatopora hystrix");
-//	        iter = model.listStatements(selector);
-//	        // print out the predicate, subject and object of each statement
-//	        while (iter.hasNext()) {
-//	            Statement stmt      = iter.nextStatement();         // get next statement
-//	            Resource  subject   = stmt.getSubject();   // get the subject
-//	            Property  predicate = stmt.getPredicate(); // get the predicate
-//	            RDFNode   object    = stmt.getObject();    // get the object
-//	            
-//	            outwriter.print("SUBJECT: " + subject.toString());
-//	            outwriter.print("\tPREDICATE: " + predicate.toString() + " ");
-//	            if (object instanceof Resource) {
-//	                outwriter.print("\tOBJECT: " + object.toString());
-//	            } else {
-//	                // object is a literal
-//	                outwriter.print("\tOBJECT: \"" + object.toString() + "\"");
-//	            }
-//	            outwriter.println(" .");
-//	        }
-	        
 	        
 	        // now issue some queries
-	        
-	        String queryStr = "select ?x where { ?x \"species\" \"Seriatopora hystrix\" } ";
-			Query query = QueryFactory.create(queryStr);
+	        //String queryStr = request.getParameter("queryStr");
+	        //String queryStr = "select ?x where { ?x <#species> \"Seriatopora hystrix\" } ";
+	        String queryStr = "select ?x ?z where { ?x <http://description> ?z } ";
+	        outwriter.println("************************************************************");
+	        outwriter.println("Applying your query string, sir");
+	        outwriter.println("************************************************************\n");
+	        Query query = null;
+	        query = QueryFactory.create(queryStr);
+	        System.out.println(query);
 			QueryExecution qexec = QueryExecutionFactory.create(query, model);
 			try {
 				ResultSet result = qexec.execSelect();
-
+				System.out.println("result: " + result);
+				System.out.println("result has next " + result.hasNext());
 				while (result.hasNext()) {
 					QuerySolution soln = result.nextSolution();
+					System.out.println("query solution: " + soln);
 					RDFNode filename = soln.get("?file");
 					if (filename != null) {
 						System.out.println("The file: " + filename + " matches your query!");
 					} else
-						System.out.println("No Friends found!");
+						System.out.println("No rdf found!");
 				}
 			} finally {
 				qexec.close();
@@ -251,7 +242,6 @@ public class SPARQLServlet extends GLIMSServlet {
 		// RequestDispatcher dispatcher =
 		// getServletContext().getRequestDispatcher("/sparql.jsp");
 		// dispatcher.forward(req, resp);
-
 	}
 
 	/**

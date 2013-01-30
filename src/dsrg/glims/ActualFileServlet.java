@@ -34,17 +34,16 @@ public class ActualFileServlet extends GLIMSServlet {
 	 */
 	@Override
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		Drive drive = getDriveService(req, resp);
 		String fileId = req.getParameter("file_id");
-		System.out.println("file id: " + fileId);
-
 		if (fileId == null) {
 			System.out.println("file id was null");
 			sendError(resp, 400, "The `file_id` URI parameter must be specified.");
 			return;
 		}
-		
+		System.out.println("file id: " + fileId);
+
 		File file = null;
+		Drive drive = getDriveService(req, resp);
 		try {
 			file = drive.files().get(fileId).execute();
 		} catch (GoogleJsonResponseException e) {
@@ -59,9 +58,8 @@ public class ActualFileServlet extends GLIMSServlet {
 				return;
 			}
 		}
-				
+		
 		if (file != null) {
-			
 			// get all the metadata for a file
 			// does this by going two levels up in the file hierarchy
 			// there is not enough error handling in this area

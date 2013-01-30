@@ -90,7 +90,7 @@ public class WriteDriveLabelsFileServlet extends GLIMSServlet {
 		if (file != null) {
 
 			String content = "asdf jkl;";
-			AppEngineFile blobFile = downloadFileContentToBlob(service, file); // now returns aef
+			AppEngineFile blobFile = downloadFileContentToBlob(service, file);
 			writeDocsLabelsFromBlobStandardFormat(blobFile, service);
 			
 			resp.setContentType(JSON_MIMETYPE);
@@ -427,7 +427,6 @@ public class WriteDriveLabelsFileServlet extends GLIMSServlet {
 					try {
 						Thread.sleep(2000);
 					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				}

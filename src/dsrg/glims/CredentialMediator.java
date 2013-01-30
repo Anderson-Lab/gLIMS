@@ -111,6 +111,26 @@ public class CredentialMediator {
 					"client_secrets.json is missing or invalid.");
 		}
 	}
+	
+	/**
+	 * Creates a new CredentialsManager for the given HTTP request.
+	 * 
+	 * @param clientSecretsStream
+	 *            Stream of client_secrets.json.
+	 * @throws InvalidClientSecretsException
+	 */
+	public CredentialMediator(InputStream clientSecretsStream, Collection<String> scopes)
+			throws InvalidClientSecretsException {
+		this.scopes = scopes;
+		this.credentialStore = new AppEngineCredentialStore();
+		try {
+			secrets = GoogleClientSecrets.load(JSON_FACTORY,
+					clientSecretsStream);
+		} catch (IOException e) {
+			throw new InvalidClientSecretsException(
+					"client_secrets.json is missing or invalid.");
+		}
+	}
 
 	/**
 	 * @return Client information parsed from client_secrets.json.
@@ -123,7 +143,7 @@ public class CredentialMediator {
 	 * Builds an empty GoogleCredential, configured with appropriate
 	 * HttpTransport, JsonFactory, and client information.
 	 */
-	private Credential buildEmptyCredential() {
+	public Credential buildEmptyCredential() {
 		return new GoogleCredential.Builder().setClientSecrets(this.secrets)
 				.setTransport(TRANSPORT).setJsonFactory(JSON_FACTORY).build();
 	}
@@ -165,7 +185,7 @@ public class CredentialMediator {
 	 * @throws CodeExchangeException
 	 *             An error occurred.
 	 */
-	private Credential exchangeCode(String authorizationCode)
+	public Credential exchangeCode(String authorizationCode)
 			throws CodeExchangeException {
 		// Talk to Google and upgrade the given authorization code to an access
 		// token and hopefully a refresh token.
@@ -289,14 +309,10 @@ public class CredentialMediator {
 					request.getSession().setAttribute(USER_ID_KEY, userId);
 					request.getSession().setAttribute(EMAIL_KEY,
 							userInfo.getEmail());
-					// Sometimes we won't get a refresh token after upgrading a
-					// code.
-					// This won't work for our app, because the user can land
-					// directly
+					// Sometimes we won't get a refresh token after upgrading a code.
+					// This won't work for our app, because the user can land directly
 					// at our app without first visiting Google Drive.
-					// Therefore,
-					// only bother to store the Credential if it has a refresh
-					// token.
+					// Therefore, only bother to store the Credential if it has a refresh token.
 					// If it doesn't, we'll get one below.
 					if (credential.getRefreshToken() != null) {
 						credentialStore.store(userId, credential);
@@ -314,10 +330,8 @@ public class CredentialMediator {
 				throw new NoRefreshTokenException(authorizationUrl);
 			}
 		} catch (CodeExchangeException e) {
-			// The code the user arrived here with was bad. This pretty much
-			// never
-			// happens. In a production application, we'd either redirect the
-			// user
+			// The code the user arrived here with was bad. This pretty much never
+			// happens. In a production application, we'd either redirect the user
 			// somewhere like a home page, or show them a vague error mentioning
 			// that they probably didn't arrive to our app from Google Drive.
 			e.printStackTrace();
