@@ -16,7 +16,7 @@ import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.Drive.Builder;
 import com.google.api.services.drive.model.File;
 
-import dsrg.glims.CredentialMediator;
+import dslab.glims.CredentialMediator;
 
 public class TestTokenDriver {
 	/**

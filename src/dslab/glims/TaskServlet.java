@@ -1,4 +1,4 @@
-package dsrg.glims;
+package dslab.glims;
 
 import java.io.IOException;
 

@@ -1,4 +1,4 @@
-package dsrg.glims;
+package dslab.glims;
 
 import java.io.IOException;
 
@@ -10,7 +10,7 @@ import com.google.appengine.api.users.User;
 import com.google.appengine.api.users.UserService;
 import com.google.appengine.api.users.UserServiceFactory;
 
-import dsrg.glims.CredentialMediator.NoRefreshTokenException;
+import dslab.glims.CredentialMediator.NoRefreshTokenException;
 
 /**
  * Servlet handling the OAuth callback from the authentication service. We are

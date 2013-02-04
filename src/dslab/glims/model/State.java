@@ -1,4 +1,4 @@
-package dsrg.glims.model;
+package dslab.glims.model;
 
 import java.util.Collection;
 

@@ -1,4 +1,4 @@
-package dsrg.glims;
+package dslab.glims;
 
 /* Copyright (c) 2008 Google Inc.
  *

@@ -1,4 +1,4 @@
-package dsrg.glims;
+package dslab.glims;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,7 +20,7 @@ import com.google.api.client.json.jackson.JacksonFactory;
 import com.google.api.services.drive.Drive.Files.Insert;
 import com.google.api.services.drive.model.File;
 
-import dsrg.glims.CredentialMediator.InvalidClientSecretsException;
+import dslab.glims.CredentialMediator.InvalidClientSecretsException;
 
 /**
  * Abstract servlet that sets up credentials and provides some convenience
