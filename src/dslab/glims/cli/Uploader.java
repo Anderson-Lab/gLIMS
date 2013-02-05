@@ -52,22 +52,7 @@ import java.util.Date;
 import java.util.List;
 
 public class Uploader {
-	/**
-	 * Path component under war/ to locate client_secrets.json file.
-	 */
-	public static final String CLIENT_SECRETS_FILE_PATH = "war/WEB-INF/client_secrets.json";
-	/**
-	 * Scopes for which to request access from the user.
-	 */
-	public static final List<String> SCOPES = Arrays.asList(
-			// Required to access and manipulate files.
-			"https://www.googleapis.com/auth/drive",
-			// Required to identify the user in our data store.
-			"https://www.googleapis.com/auth/userinfo.email",
-			"https://www.googleapis.com/auth/userinfo.profile",
-			"https://docs.google.com/feeds/"/*
-											 * "https://docs.googleusercontent.com/"
-											 */);
+
 
 	/**
 	 * HttpTransport to use for external requests.
@@ -81,54 +66,13 @@ public class Uploader {
 
 	/** Global Drive API client. */
 	private static Drive drive;
-		
-	public static InputStream getClientSecretsStream() {
-		try {
-			return new FileInputStream(CLIENT_SECRETS_FILE_PATH);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-			return null;
-		}
-	}
 	
-	public static String getHTML(String urlToRead,String jSessionID) {
-	      URL url;
-	      HttpURLConnection conn;
-	      BufferedReader rd;
-	      String line;
-	      String result = "";
-	      try {
-	         url = new URL(urlToRead);
-	         conn = (HttpURLConnection) url.openConnection();
-	         conn.setRequestMethod("GET");
-	         conn.setRequestProperty("Cookie", "JSESSIONID='"+jSessionID+"'");
-	         rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-	         while ((line = rd.readLine()) != null) {
-	            result += line;
-	         }
-	         rd.close();
-	      } catch (Exception e) {
-	         e.printStackTrace();
-	      }
-	      return result;
-	   }
 	
-	class Data {
-	    public String AccessToken;
-	    public String RefreshToken;
-	}
 	
 	public String upload(String jSessionID, String pathToFile, String title, String mimeType, String raw_email, String parentID) {
 		try {
-		CredentialMediator cm = new CredentialMediator (getClientSecretsStream(),SCOPES);
-		
-		Credential credentials = cm.buildEmptyCredential();
-		
-		String jsonResponse = getHTML("http://myglims.appspot.com/token",jSessionID);
-		Data data = new Gson().fromJson(jsonResponse, Data.class);
-		
-		credentials.setAccessToken(data.AccessToken);
-		credentials.setRefreshToken(data.RefreshToken);
+
+		Credential credentials = OAuth2Native.getCredentialFromJSessionID(jSessionID);
 		
 		String email = null;
 		if (raw_email.contains("__at__")) {
