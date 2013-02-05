@@ -73,7 +73,6 @@ public class Downloader {
  private static final int MB = 0x100000;
  private static Oauth2 oauth2;
  private static Drive service;
- private static Permission perm = new Permission().setRole("writer").setType("user");
 
  public static void main(String[] args) throws Exception {
 	Preconditions
@@ -103,6 +102,11 @@ public class Downloader {
 		System.err.println("Invalid number of command line arguments");
 		System.exit(1);
 	 }
+	 
+	 new Downloader().download(fileID, pathToFile, credentialPath, jSessionID, direct);
+ }
+ 
+ public void download(String fileID, String pathToFile, String credentialPath, String jSessionID, boolean direct) throws Exception {
 	 	 
 	// authorization
     Credential credential = null;
