@@ -58,7 +58,7 @@ public class Uploader {
 	 * HttpTransport to use for external requests.
 	 */
 	private static final HttpTransport TRANSPORT = new NetHttpTransport();
-	
+
 	private Permission perm = new Permission().setRole("writer").setType("user");
 
 	/** Global instance of the JSON factory. */
@@ -66,29 +66,34 @@ public class Uploader {
 
 	/** Global Drive API client. */
 	private static Drive drive;
-	
-	
-	
-	public String upload(String jSessionID, String pathToFile, String title, String mimeType, String raw_email, String parentID) {
+
+
+
+	public String upload(String jSessionID, String credentialPath, String pathToFile, String title, String mimeType, String raw_email, String parentID) {
 		try {
 
-		Credential credentials = OAuth2Native.getCredentialFromJSessionID(jSessionID);
-		
-		String email = null;
-		if (raw_email.contains("__at__")) {
-			String[] email_parts = raw_email.split("\\__at__");
-			email = email_parts[0] + "@" + email_parts[1];
-		} else {
-			email = raw_email;
-		}
-		perm.setValue(email);
+			// authorization
+			Credential credential = null;
+			if (jSessionID == null) {
+				credential = OAuth2Native.authorize(credentialPath);
+			} else
+				credential = OAuth2Native.getCredentialFromJSessionID(jSessionID);
+
+			String email = null;
+			if (raw_email.contains("__at__")) {
+				String[] email_parts = raw_email.split("\\__at__");
+				email = email_parts[0] + "@" + email_parts[1];
+			} else {
+				email = raw_email;
+			}
+			perm.setValue(email);
 
 			try {
 				// authorization
 				// set up the global Drive instance
 				drive = new Drive.Builder(TRANSPORT, JSON_FACTORY,
-						credentials)
-						.setApplicationName("gLIMS Uploader/1.0").build();
+						credential)
+				.setApplicationName("gLIMS Uploader/1.0").build();
 
 				// run commands
 
@@ -119,23 +124,34 @@ public class Uploader {
 		}
 		return "ERROR";
 	}
-	
+
 	public static void main(String[] args) throws Exception {
 		Preconditions
-		.checkArgument(args.length >= 5,
-				"Usage: java -jar Uploader.jar <jsession id> <path to file> <title> <mime type> <email> [<parent id>]");
+		.checkArgument(args.length >= 4,
+		"Usage: java -jar Uploader.jar <path to file> <title> <mime type> <email> [-p <parent id> -c <path to credentials> -j <jsession id>]");
 
-		
-		String jSessionID = args[0];
-		String fileName = args[1];
-		String title = args[2];
-		String mimeType = args[3];
-		String raw_email = args[4];
+		String fileName = args[0];
+		String title = args[1];
+		String mimeType = args[2];
+		String raw_email = args[3];
 		String parentID = "root";
-		if (args.length > 5)
-			parentID = args[5];
-		
-		new Uploader().upload(jSessionID, fileName, title, mimeType, raw_email, parentID);
+		String credentialPath = "credentials.dat";
+		String jSessionID = null;
+		if ((args.length-2) % 2 == 0) {
+			for (int i = 2; i < args.length; i+=2) {
+				if (args[i].equals("-c"))
+					credentialPath = args[i+1];
+				else if (args[i].equals("-j"))
+					jSessionID = args[i+1];
+				else if (args[i].equals("-p"))
+					parentID = args[i+1];
+			}
+		} else {
+			System.err.println("Invalid number of command line arguments");
+			System.exit(1);
+		}
+
+		new Uploader().upload(jSessionID, credentialPath, fileName, title, mimeType, raw_email, parentID);
 	}
 
 	/** Uploads a file using either resumable or direct media upload. */
@@ -143,7 +159,7 @@ public class Uploader {
 			String mimeType, String parentId, boolean useDirectUpload) throws IOException {
 		File fileMetadata = new File();
 		fileMetadata.setTitle(title);
-	    fileMetadata.setParents(Arrays.asList(new ParentReference().setId(parentId)));
+		fileMetadata.setParents(Arrays.asList(new ParentReference().setId(parentId)));
 		java.io.File uploadFile = new java.io.File(filePath);
 		InputStreamContent mediaContent = new InputStreamContent(mimeType,
 				new BufferedInputStream(new FileInputStream(uploadFile)));
@@ -151,7 +167,7 @@ public class Uploader {
 
 		Drive.Files.Insert insert = drive.files().insert(fileMetadata,
 				mediaContent);
-		
+
 		MediaHttpUploader uploader = insert.getMediaHttpUploader();
 		uploader.setDirectUploadEnabled(useDirectUpload);
 		uploader.setProgressListener(new FileUploadProgressListener());

@@ -147,6 +147,15 @@ public class CredentialMediator {
 		return new GoogleCredential.Builder().setClientSecrets(this.secrets)
 				.setTransport(TRANSPORT).setJsonFactory(JSON_FACTORY).build();
 	}
+	
+	/**
+	 * Builds an empty GoogleCredential, configured with appropriate
+	 * HttpTransport, JsonFactory, and client information.
+	 */
+	public static Credential buildEmptyCredential(String CLIENT_ID, String CLIENT_SECRET) {
+		return new GoogleCredential.Builder().setClientSecrets(CLIENT_ID,CLIENT_SECRET)
+				.setTransport(TRANSPORT).setJsonFactory(JSON_FACTORY).build();
+	}
 
 	/**
 	 * Retrieves stored credentials for the provided email address.

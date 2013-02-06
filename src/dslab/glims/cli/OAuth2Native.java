@@ -19,7 +19,9 @@ import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.http.HttpTransport;
+import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.jackson.JacksonFactory;
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 
@@ -40,10 +42,12 @@ import java.util.Arrays;
 import java.util.List;
 
 public class OAuth2Native {
-	/**
-	 * Path component under war/ to locate client_secrets.json file.
-	 */
-	public static String CLIENT_SECRETS_FILE_PATH = "client_secrets.json";
+	/** Global instance of the HTTP transport. */
+	public static final HttpTransport HTTP_TRANSPORT = new NetHttpTransport();
+
+	/** Global instance of the JSON factory. */
+	public static final JsonFactory JSON_FACTORY = new JacksonFactory();
+
 	/**
 	 * Scopes for which to request access from the user.
 	 */
@@ -54,130 +58,94 @@ public class OAuth2Native {
 			"https://www.googleapis.com/auth/userinfo.email",
 			"https://www.googleapis.com/auth/userinfo.profile",
 			"https://docs.google.com/feeds/"/*
-											 * "https://docs.googleusercontent.com/"
-											 */);
+			 * "https://docs.googleusercontent.com/"
+			 */);
+
+	private static String CLIENT_ID = "1015223624366.apps.googleusercontent.com";
+	private static String CLIENT_SECRET = "8ou5wFWbmbbFQuA-BD1ljaPR";
 
 	public static Credential getCredentialFromJSessionID(String jSessionID) throws InvalidClientSecretsException {
-		CredentialMediator cm = new CredentialMediator (OAuth2Native.getClientSecretsStream(),OAuth2Native.SCOPES);
-		
-		Credential credentials = cm.buildEmptyCredential();
-		
+		Credential credentials = CredentialMediator.buildEmptyCredential(CLIENT_ID,CLIENT_SECRET);
+
 		String jsonResponse = OAuth2Native.getHTML("http://myglims.appspot.com/token",jSessionID);
 		Data data = new Gson().fromJson(jsonResponse, Data.class);
-		
+
 		credentials.setAccessToken(data.AccessToken);
 		credentials.setRefreshToken(data.RefreshToken);
 		return credentials;
 	}
-	
+
 	public static String getHTML(String urlToRead,String jSessionID) {
-	      URL url;
-	      HttpURLConnection conn;
-	      BufferedReader rd;
-	      String line;
-	      String result = "";
-	      try {
-	         url = new URL(urlToRead);
-	         conn = (HttpURLConnection) url.openConnection();
-	         conn.setRequestMethod("GET");
-	         conn.setRequestProperty("Cookie", "JSESSIONID='"+jSessionID+"'");
-	         rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-	         while ((line = rd.readLine()) != null) {
-	            result += line;
-	         }
-	         rd.close();
-	      } catch (Exception e) {
-	         e.printStackTrace();
-	      }
-	      return result;
-	   }
-	
-	class Data {
-	    public String AccessToken;
-	    public String RefreshToken;
-	}
-	
-  /** Google client secrets or {@code null} before initialized in {@link #authorize}. */
-  private static GoogleClientSecrets clientSecrets = null;
-
-  /** Returns the Google client secrets or {@code null} before initialized in {@link #authorize}. */
-  public static GoogleClientSecrets getClientSecrets() {
-    return clientSecrets;
-  }
-
-  /**
-   * Loads the Google client secrets (if not already loaded).
-   *
-   * @param jsonFactory JSON factory
-   */
-  private static GoogleClientSecrets loadClientSecrets(JsonFactory jsonFactory) throws IOException {
-    if (clientSecrets == null) {
-      InputStream inputStream = getClientSecretsStream();
-      Preconditions.checkNotNull(inputStream, "missing resource %s", CLIENT_SECRETS_FILE_PATH);
-      clientSecrets = GoogleClientSecrets.load(jsonFactory, inputStream);
-      Preconditions.checkArgument(!clientSecrets.getDetails().getClientId().startsWith("[[")
-          && !clientSecrets.getDetails().getClientSecret().startsWith("[["),
-          "Please enter your client ID and secret from the Google APIs Console in %s", CLIENT_SECRETS_FILE_PATH);
-    }
-    return clientSecrets;
-  }
-
-  
-	public static InputStream getClientSecretsStream() {
+		URL url;
+		HttpURLConnection conn;
+		BufferedReader rd;
+		String line;
+		String result = "";
 		try {
-			return new FileInputStream(CLIENT_SECRETS_FILE_PATH);
-		} catch (FileNotFoundException e) {
+			url = new URL(urlToRead);
+			conn = (HttpURLConnection) url.openConnection();
+			conn.setRequestMethod("GET");
+			conn.setRequestProperty("Cookie", "JSESSIONID='"+jSessionID+"'");
+			rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+			while ((line = rd.readLine()) != null) {
+				result += line;
+			}
+			rd.close();
+		} catch (Exception e) {
 			e.printStackTrace();
-			return null;
 		}
+		return result;
 	}
 
-  /**
-   * Authorizes the installed application to access user's protected data.
-   *
-   * @param transport HTTP transport
-   * @param jsonFactory JSON factory
-   * @param receiver verification code receiver
-   * @param scopes OAuth 2.0 scopes
-   */
-  public static Credential authorize(HttpTransport transport, JsonFactory jsonFactory,
-      Iterable<String> scopes, String credentialPath) throws Exception {
-    try {
-      GoogleClientSecrets clientSecrets = loadClientSecrets(jsonFactory);
-      File cred = new File(credentialPath);
-      
-      FileCredentialStore fcs = new FileCredentialStore(cred , jsonFactory);
-      GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-          transport, jsonFactory, clientSecrets, scopes).setAccessType("offline")
-          .setApprovalPrompt("auto").setCredentialStore(fcs).build();
-      	  //.setAccessType("online")
-          //.setApprovalPrompt("auto").build();
-      Credential c = flow.loadCredential("datascienceresearch@gmail.com");
-      
-      if (c != null)
-    	  return c;
-      else {
-    	  System.err.println("No valid token. Please visit myglims.appspot.com/token");
-	      /*browse(flow.newAuthorizationUrl().setRedirectUri(redirectUri).build());
+	class Data {
+		public String AccessToken;
+		public String RefreshToken;
+	}
+
+	/**
+	 * Authorizes the installed application to access user's protected data.
+	 *
+	 * @param transport HTTP transport
+	 * @param jsonFactory JSON factory
+	 * @param receiver verification code receiver
+	 * @param scopes OAuth 2.0 scopes
+	 */
+	public static Credential authorize(String credentialPath) throws Exception {
+		try {
+			File cred = new File(credentialPath);
+
+			FileCredentialStore fcs = new FileCredentialStore(cred , JSON_FACTORY);
+			GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+					HTTP_TRANSPORT, JSON_FACTORY, CLIENT_ID, CLIENT_SECRET, SCOPES).setAccessType("offline")
+					.setApprovalPrompt("auto").setCredentialStore(fcs).build();
+			//.setAccessType("online")
+			//.setApprovalPrompt("auto").build();
+			Credential c = flow.loadCredential("datascienceresearch@gmail.com");
+
+			if (c != null)
+				return c;
+			else {
+				System.err.println("No valid token. Please visit https://myglims.appspot.com/token");
+				/*browse(flow.newAuthorizationUrl().setRedirectUri(redirectUri).build());
 	      // receive authorization code and exchange it for an access token
 	      String code = receiver.waitForCode();
 	      GoogleTokenResponse response =
 	          flow.newTokenRequest(code).setRedirectUri(redirectUri).execute();
 	      // store credential and return it
 	      return flow.createAndStoreCredential(response, "datascienceresearch@gmail.com");
-	      */
-      }
-      //System.out.println(flow.getCredentialStore());
-      //;
-      //return c;
-    } finally {
-      //receiver.stop();
-    }
-	  return null;
-  }
+				 */
+			}
+			//System.out.println(flow.getCredentialStore());
+			//;
+			//return c;
+		} finally {
+			//receiver.stop();
+		}
+		return null;
+	}
 
-  /** Open a browser at the given URL. */
-  /*private static void browse(String url) {
+	/** Open a browser at the given URL. */
+	/*private static void browse(String url) {
     // first try the Java Desktop
     if (Desktop.isDesktopSupported()) {
       Desktop desktop = Desktop.getDesktop();
@@ -211,6 +179,6 @@ public class OAuth2Native {
     System.out.println("  " + url);
   }*/
 
-  private OAuth2Native() {
-  }
+	private OAuth2Native() {
+	}
 }
