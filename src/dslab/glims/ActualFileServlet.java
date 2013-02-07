@@ -41,7 +41,14 @@ public class ActualFileServlet extends GLIMSServlet {
 			return;
 		}
 		System.out.println("file id: " + fileId);
-
+		
+		String includeMeta = req.getParameter("includeMeta");
+		boolean hasMeta = false;
+		if (includeMeta != null) {
+			if (includeMeta.equals("true"))
+				hasMeta = true;
+		}
+		
 		File file = null;
 		Drive drive = getDriveService(req, resp);
 		try {
@@ -60,48 +67,61 @@ public class ActualFileServlet extends GLIMSServlet {
 		}
 		
 		if (file != null) {
-			// get all the metadata for a file
-			// does this by going two levels up in the file hierarchy
-			// there is not enough error handling in this area
-			List<ParentReference> parents = file.getParents();
-			BatchRequest batch = drive.batch();
-			List<FileCallback> parentCallbacks = new ArrayList<FileCallback>();
-			for (int i = 0; i < parents.size(); i++) {
-				Get fileGet = drive.files().get(parents.get(i).getId());
-				FileCallback fileCallback = new FileCallback();
-				parentCallbacks.add(fileCallback);
-				fileGet.queue(batch,fileCallback);				
+			String parentsString = "";
+			if (hasMeta) {
+				// get all the metadata for a file
+				// does this by going two levels up in the file hierarchy
+				// there is not enough error handling in this area
+				List<ParentReference> parents = file.getParents();
+				BatchRequest batch = drive.batch();
+				List<FileCallback> parentCallbacks = new ArrayList<FileCallback>();
+				for (int i = 0; i < parents.size(); i++) {
+					Get fileGet = drive.files().get(parents.get(i).getId());
+					FileCallback fileCallback = new FileCallback();
+					parentCallbacks.add(fileCallback);
+					fileGet.queue(batch, fileCallback);
+				}
+				batch.execute();
+
+				List<FileCallback> grandParentCallbacks = new ArrayList<FileCallback>();
+				for (int i = 0; i < parentCallbacks.size(); i++) {
+					File parentFile = parentCallbacks.get(i).getFile();
+					List<ParentReference> grandParents = parentFile
+							.getParents();
+					Get fileGet = drive.files()
+							.get(grandParents.get(0).getId()); 
+					// This assumes exactly 1 grandparent, which is the way the system is defined
+					FileCallback fileCallback = new FileCallback();
+					grandParentCallbacks.add(fileCallback);
+					fileGet.queue(batch, fileCallback);
+				}
+				batch.execute();
+
+				StringBuffer buffer = new StringBuffer();
+				buffer.append("{ ");
+				for (int i = 0; i < parentCallbacks.size(); i++) {
+					File parentFile = parentCallbacks.get(i).getFile();
+					File grandParentFile = grandParentCallbacks.get(i)
+							.getFile();
+					if (i > 0)
+						buffer.append(", ");
+					buffer.append("\"" + grandParentFile.getTitle() + "\": \""
+							+ parentFile.getTitle() + "\""); // got null pointer
+																// here
+				}
+				buffer.append(" }");
+				parentsString = buffer.toString();
 			}
-			batch.execute();
-					
-			List<FileCallback> grandParentCallbacks = new ArrayList<FileCallback>();
-			for (int i=0; i<parentCallbacks.size(); i++) {
-				File parentFile = parentCallbacks.get(i).getFile();
-				List<ParentReference> grandParents = parentFile.getParents();
-				Get fileGet = drive.files().get(grandParents.get(0).getId()); // This assumes exactly 1 grandparent, which is the way the system is defined 
-				FileCallback fileCallback = new FileCallback();
-				grandParentCallbacks.add(fileCallback);
-				fileGet.queue(batch,fileCallback);								
-			}
-			batch.execute();
 			
-			StringBuffer buffer = new StringBuffer();
-			buffer.append("{ ");
-			for (int i=0; i<parentCallbacks.size(); i++) {
-				File parentFile = parentCallbacks.get(i).getFile();
-				File grandParentFile = grandParentCallbacks.get(i).getFile();
-				if (i > 0)
-					buffer.append(", ");
-				buffer.append("\"" + grandParentFile.getTitle() + "\": \"" + parentFile.getTitle() + "\""); // got null pointer here
-			}
-			buffer.append(" }");
-			String parentsString = buffer.toString();
 			String content = downloadFileContent(drive, file);
 			if (content == null) {
 				content = "";
 			}
 			resp.setContentType(JSON_MIMETYPE);
-			resp.getWriter().print(new ClientFile(file, content, parentsString).toJson());
+			if (hasMeta)
+				resp.getWriter().print(new ClientFile(file, content, parentsString).toJson());
+			else
+				resp.getWriter().print(new ClientFile(file, content).toJson());
 		} else {
 			sendError(resp, 404, "File not found");
 		}

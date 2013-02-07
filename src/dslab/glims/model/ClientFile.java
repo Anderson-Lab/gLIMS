@@ -95,8 +95,7 @@ public class ClientFile {
 	 * @return JSON representation of this ClientFile.
 	 */
 	public String toJson() {
-		String s = new Gson().toJson(this).toString();
-		return s;
+		return new Gson().toJson(this).toString();
 	}
 
 	/**
