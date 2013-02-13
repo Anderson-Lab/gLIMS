@@ -41,8 +41,12 @@ import com.google.api.services.drive.Drive.Files.Insert;
 import com.google.api.client.googleapis.media.MediaHttpDownloader;
 import com.google.common.base.Preconditions;
 
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -116,17 +120,30 @@ public class Downloader {
 		NoTimeoutHttpRequestInitializer init = new NoTimeoutHttpRequestInitializer(credential);
 		service = new Builder(OAuth2Native.HTTP_TRANSPORT, OAuth2Native.JSON_FACTORY, credential).setHttpRequestInitializer(init).build();
 		downloadDriveFile(fileID, pathToFile, direct);
-	}
+	}	
 
-	public static void downloadDriveFile(String ID, String pathToFile, boolean direct) {
+	public final static int IN_CACHE = 1;
+	public final static int DOWNLOAD_SUCCESS = 0;
+	public final static int DOWNLOAD_FAIL = -1;
+	
+	public static int downloadDriveFile(String ID, String pathToFile, boolean direct) {
 		try {
 			try {
 				// get file id
-				String fileID = ID;	    	 
-
+				String fileID = ID;
+				
 				File fileToDownload = service.files().get(fileID).execute();
 				GenericUrl u = new GenericUrl(fileToDownload.getDownloadUrl());
+				
 				System.out.println("md5: "+fileToDownload.getMd5Checksum());
+				java.io.File f = new java.io.File(pathToFile);
+				if (f.exists()) {
+					FileInputStream fis = new FileInputStream(f);
+					String md5 = org.apache.commons.codec.digest.DigestUtils.md5Hex(fis);
+					if (md5.equals(fileToDownload.getMd5Checksum()))
+						return IN_CACHE;
+				}
+				
 				Get request = service.files().get(fileToDownload.getId());
 				//String name = fileToDownload.getTitle();
 
@@ -139,14 +156,14 @@ public class Downloader {
 				bos.close();
 
 				//System.out.println(name);
-				return;
+				return DOWNLOAD_SUCCESS;
 			} catch (IOException e) {
 				System.err.println(e.getMessage());
 			}
 		} catch (Throwable t) {
 			t.printStackTrace();
 		}
-		System.exit(1);
+		return DOWNLOAD_FAIL;
 	}
 
 	static void header(String name) {
