@@ -66,9 +66,10 @@ public class Downloader {
 	private static Drive service;
 
 	public static void main(String[] args) throws Exception {
-		Preconditions
-		.checkArgument(args.length >= 2,
-				"Usage: java -jar Downloader.jar <file id> <path to file> [-d [direct|resumable] -c <path to credentials> -j <jsession id>]\nDefault credential file is credentials.dat\nNo default jsession id");
+		if (args.length < 2) {
+			System.out.println("Usage: java -jar Downloader.jar <file id> <path to file> [-d [direct|resumable] -c <path to credentials> -j <jsession id>]\nDefault credential file is credentials.dat\nNo default jsession id");
+			return;
+		}
 
 		String fileID = args[0];
 		String pathToFile = args[1];
@@ -120,13 +121,27 @@ public class Downloader {
 		NoTimeoutHttpRequestInitializer init = new NoTimeoutHttpRequestInitializer(credential);
 		service = new Builder(OAuth2Native.HTTP_TRANSPORT, OAuth2Native.JSON_FACTORY, credential).setHttpRequestInitializer(init).build();
 		downloadDriveFile(fileID, pathToFile, direct);
-	}	
+	}
+	
+	public String getTitle(String fileID, String credentialPath, String jSessionID) throws Exception {
+		// authorization
+		Credential credential = null;
+		if (jSessionID == null) {
+			credential = OAuth2Native.authorize(credentialPath);
+		} else
+			credential = OAuth2Native.getCredentialFromJSessionID(jSessionID);
+
+		NoTimeoutHttpRequestInitializer init = new NoTimeoutHttpRequestInitializer(credential);
+		service = new Builder(OAuth2Native.HTTP_TRANSPORT, OAuth2Native.JSON_FACTORY, credential).setHttpRequestInitializer(init).build();
+		File f = service.files().get(fileID).execute();
+		return f.getTitle();
+	}
 
 	public final static int IN_CACHE = 1;
 	public final static int DOWNLOAD_SUCCESS = 0;
 	public final static int DOWNLOAD_FAIL = -1;
 	
-	public static int downloadDriveFile(String ID, String pathToFile, boolean direct) {
+	private static int downloadDriveFile(String ID, String pathToFile, boolean direct) {
 		try {
 			try {
 				// get file id
@@ -136,6 +151,7 @@ public class Downloader {
 				GenericUrl u = new GenericUrl(fileToDownload.getDownloadUrl());
 				
 				System.out.println("md5: "+fileToDownload.getMd5Checksum());
+				System.out.println("title: "+fileToDownload.getTitle());
 				java.io.File f = new java.io.File(pathToFile);
 				if (f.exists()) {
 					FileInputStream fis = new FileInputStream(f);
