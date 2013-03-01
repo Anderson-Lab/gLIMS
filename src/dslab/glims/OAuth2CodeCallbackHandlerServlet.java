@@ -2,6 +2,7 @@ package dslab.glims;
 
 import java.io.IOException;
 
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -35,7 +36,7 @@ public class OAuth2CodeCallbackHandlerServlet extends GLIMSServlet {
 	 * authorization URL if you have multiple possible URL to redirect people
 	 * to.
 	 */
-	public static final String REDIRECT_URL = "/glims";
+	public static String REDIRECT_URL = "/glims";
 
 	// public static final String REDIRECT_URL =
 	// "https://eddredit.appspot.com/eddredit";
@@ -93,7 +94,16 @@ public class OAuth2CodeCallbackHandlerServlet extends GLIMSServlet {
 		} catch (NoRefreshTokenException e) {
 			e.printStackTrace();
 		}
-
+		
+		Cookie[] cookies = req.getCookies();
+		if (cookies != null) {
+			for (Cookie cookie : cookies) {
+				if (cookie.getName().equals("oauthRedirectUrl")) {
+					REDIRECT_URL = cookie.getValue();
+				}
+			}
+		}
+		
 		resp.sendRedirect(REDIRECT_URL);
 		//req.getRequestDispatcher("/glims.jsp").forward(req, resp);
 	}

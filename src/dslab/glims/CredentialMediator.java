@@ -100,6 +100,7 @@ public class CredentialMediator {
 	public CredentialMediator(HttpServletRequest request,
 			InputStream clientSecretsStream, Collection<String> scopes)
 			throws InvalidClientSecretsException {
+		
 		this.request = request;
 		this.scopes = scopes;
 		this.credentialStore = new AppEngineCredentialStore();

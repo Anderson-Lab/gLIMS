@@ -9,40 +9,43 @@ import javax.servlet.http.HttpServletResponse;
 
 import com.google.api.client.auth.oauth2.Credential;
 
-import dslab.glims.CredentialMediator.NoRefreshTokenException;
-
 public class TokenServlet extends GLIMSServlet {
 
-
 	private static final long serialVersionUID = 1L;
-	
-	
+
 	@Override
-	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+	public void doGet(HttpServletRequest req, HttpServletResponse resp)
+			throws IOException {
 		
-		resp.setContentType("text/plain");
-		PrintWriter writer = resp.getWriter();
-		
-		Cookie jSessionId = null;
-		for (Cookie cookie : req.getCookies()) {
-			if (cookie.getName().equals("JSESSIONID"))
-				jSessionId = cookie;
+		if (req.getCookies() != null) {
+			for (Cookie cookie : req.getCookies()) {
+				System.out.println("cookie " + cookie);
+				System.out.println(cookie.getName());
+				System.out.println(cookie.getValue());
+				System.out.println();
+			}			
 		}
 		
-		if (jSessionId == null)
-			writer.print("No JSESSIONID found.");
-		else {
-			CredentialMediator mediator = getCredentialMediator(req, resp);
-			Credential credential = null;
-			try {
-				credential = mediator.getActiveCredential();
-			} catch (NoRefreshTokenException e) {
-				e.printStackTrace();
+		Credential credential = null;
+		try {
+			credential = getCredential(req, resp);
+			if (credential == null) {
+				Cookie oauthRedirectUrl = new Cookie("oauthRedirectUrl", "/token");
+				resp.addCookie(oauthRedirectUrl);
+				resp.sendRedirect("/");
+				return;				
 			}
+			resp.setContentType("text/plain");
+			PrintWriter writer = resp.getWriter();
 			String accessToken = credential.getAccessToken();
 			String refreshToken = credential.getRefreshToken();
-			writer.println("{ \"AccessToken\": " + "\"" + accessToken + "\"" + ", \"RefreshToken\": "  
-						+ "\"" + refreshToken  + "\"" + " }");
+			writer.println("{ \"AccessToken\": " + "\"" + accessToken + "\""
+					+ ", \"RefreshToken\": " + "\"" + refreshToken + "\""
+					+ " }");
+		} catch (IOException ioe) {
+			System.out.println(ioe);
+		} catch (Exception e) {
+			System.out.println(e);
 		}
 	}
 }

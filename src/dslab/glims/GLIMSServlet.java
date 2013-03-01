@@ -109,7 +109,8 @@ public abstract class GLIMSServlet extends HttpServlet {
 		return getServletContext().getResourceAsStream(CLIENT_SECRETS_FILE_PATH);
 	}
 
-	public CredentialMediator getCredentialMediator(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+	public CredentialMediator getCredentialMediator(HttpServletRequest req, HttpServletResponse resp)
+			throws IOException {
 
 		// Authorize or fetch credentials. Required here to ensure this happens
 		// on first page load. Then, credentials will be stored in the user's
